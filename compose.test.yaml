@@ -11,3 +11,18 @@ services:
       XDEBUG_MODE: "coverage"
     volumes:
       - ./:/app
+    depends_on:
+      database:
+        condition: service_healthy
+
+  database:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: app
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+    healthcheck:
+      test: ["CMD", "pg_isready", "-d", "app", "-U", "app"]
+      interval: 2s
+      timeout: 5s
+      retries: 15

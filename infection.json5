@@ -3,8 +3,12 @@
     "source": {
         "directories": [
             "src"
+        ],
+        "excludes": [
+            "Kernel.php"
         ]
     },
+    "testFrameworkOptions": "--exclude-group=concurrency",
     "logs": {
         "text": "var/infection/infection.log",
         "html": "var/infection/infection.html"

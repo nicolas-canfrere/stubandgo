@@ -12,6 +12,8 @@ RUN install-php-extensions intl
 RUN install-php-extensions pdo_pgsql
 RUN install-php-extensions opcache
 RUN install-php-extensions amqp
+RUN install-php-extensions bcmath
+RUN install-php-extensions gd
 RUN install-php-extensions redis
 
 ENV LOG_STREAM="php://stdout"

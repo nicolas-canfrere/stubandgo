@@ -9,6 +9,8 @@
     "pdo_pgsql",
     "opcache",
     "amqp",
+    "bcmath",
+    "gd",
     "redis"
   ],
   "base": {

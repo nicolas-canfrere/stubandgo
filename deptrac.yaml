@@ -1,0 +1,108 @@
+deptrac:
+  paths:
+    - src
+  exclude_files:
+    - '#^src/Kernel\.php$#'
+  layers:
+    - name: Catalog.Domain
+      collectors:
+      - type: classLike
+        value: '^App\\Catalog\\Core\\Domain\\.*'
+    - name: Catalog.Application
+      collectors:
+      - type: classLike
+        value: '^App\\Catalog\\Core\\Application\\.*'
+    - name: Catalog.Infrastructure
+      collectors:
+      - type: classLike
+        value: '^App\\Catalog\\Infrastructure\\.*'
+    - name: Catalog.UI
+      collectors:
+      - type: classLike
+        value: '^App\\Catalog\\UI\\.*'
+    - name: Sales.Domain
+      collectors:
+      - type: classLike
+        value: '^App\\Sales\\Core\\Domain\\.*'
+    - name: Sales.Application
+      collectors:
+      - type: classLike
+        value: '^App\\Sales\\Core\\Application\\.*'
+    - name: Sales.Infrastructure
+      collectors:
+      - type: classLike
+        value: '^App\\Sales\\Infrastructure\\.*'
+    - name: Sales.UI
+      collectors:
+      - type: classLike
+        value: '^App\\Sales\\UI\\.*'
+    - name: Access.Domain
+      collectors:
+      - type: classLike
+        value: '^App\\Access\\Core\\Domain\\.*'
+    - name: Access.Application
+      collectors:
+      - type: classLike
+        value: '^App\\Access\\Core\\Application\\.*'
+    - name: Access.Infrastructure
+      collectors:
+      - type: classLike
+        value: '^App\\Access\\Infrastructure\\.*'
+    - name: Access.UI
+      collectors:
+      - type: classLike
+        value: '^App\\Access\\UI\\.*'
+    - name: Shared
+      collectors:
+      - type: classLike
+        value: '^App\\Shared\\(?!Infrastructure\\).*'
+    - name: Shared.Infrastructure
+      collectors:
+      - type: classLike
+        value: '^App\\Shared\\Infrastructure\\.*'
+    - name: Psr
+      collectors:
+      - type: classLike
+        value: '^Psr\\.*'
+    - name: Money
+      collectors:
+      - type: classLike
+        value: '^Money\\.*'
+    - name: Uid
+      collectors:
+      - type: classLike
+        value: '^Symfony\\Component\\Uid\\.*'
+    - name: Doctrine
+      collectors:
+      - type: classLike
+        value: '^Doctrine\\.*'
+    - name: Messenger
+      collectors:
+      - type: classLike
+        value: '^Symfony\\Component\\Messenger\\.*'
+    - name: Symfony
+      collectors:
+      - type: bool
+        must:
+        - type: classLike
+          value: '^Symfony\\.*'
+        must_not:
+        - type: classLike
+          value: '^Symfony\\Component\\Uid\\.*'
+        - type: classLike
+          value: '^Symfony\\Component\\Messenger\\.*'
+  ruleset:
+    Catalog.Domain: [Shared, Psr, Money, Uid]
+    Catalog.Application: [Catalog.Domain, Shared, Psr, Money, Uid]
+    Catalog.Infrastructure: [Catalog.Application, Catalog.Domain, Shared, Shared.Infrastructure, Psr, Money, Uid, Doctrine, Symfony, Messenger, Sales.Application, Access.Application]
+    Catalog.UI: [Catalog.Application, Shared, Psr, Money, Uid, Doctrine, Symfony, Messenger]
+    Sales.Domain: [Shared, Psr, Money, Uid]
+    Sales.Application: [Sales.Domain, Shared, Psr, Money, Uid]
+    Sales.Infrastructure: [Sales.Application, Sales.Domain, Shared, Shared.Infrastructure, Psr, Money, Uid, Doctrine, Symfony, Messenger, Catalog.Application, Access.Application]
+    Sales.UI: [Sales.Application, Shared, Psr, Money, Uid, Doctrine, Symfony, Messenger]
+    Access.Domain: [Shared, Psr, Money, Uid]
+    Access.Application: [Access.Domain, Shared, Psr, Money, Uid]
+    Access.Infrastructure: [Access.Application, Access.Domain, Shared, Shared.Infrastructure, Psr, Money, Uid, Doctrine, Symfony, Messenger, Catalog.Application, Sales.Application]
+    Access.UI: [Access.Application, Shared, Psr, Money, Uid, Doctrine, Symfony, Messenger]
+    Shared: [Psr, Money, Uid]
+    Shared.Infrastructure: [Shared, Psr, Money, Uid, Doctrine, Symfony, Messenger]

@@ -8,6 +8,9 @@ services:
       - ./:/app
     extra_hosts:
       - host.docker.internal:host-gateway
+    depends_on:
+      database:
+        condition: service_healthy
 
   nginx:
     image: nginx:1.29-alpine
@@ -18,3 +21,53 @@ services:
     volumes:
       - ./public:/app/public:ro
       - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+
+  database:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: app
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+    healthcheck:
+      test: ["CMD", "pg_isready", "-d", "app", "-U", "app"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+    volumes:
+      - database_data:/var/lib/postgresql
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 10s
+      retries: 15
+    ports:
+      - "15672:15672"
+
+  mailer:
+    image: axllent/mailpit
+    ports:
+      - "8025:8025"
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+
+  worker:
+    build:
+      context: .
+      target: dev
+    user: "${UID:-1000}:${GID:-1000}"
+    command: bin/console messenger:consume async -vv
+    restart: unless-stopped
+    volumes:
+      - ./:/app
+    depends_on:
+      database:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+volumes:
+  database_data:
