@@ -40,3 +40,5 @@ when@test:
         App\Tests\Shared\Infrastructure\Fixtures\:
             resource: '../tests/Shared/Infrastructure/Fixtures/'
             exclude: '../tests/Shared/Infrastructure/Fixtures/*Exception.php'
+        App\Tests\Shared\Infrastructure\Outbox\Fixtures\:
+            resource: '../tests/Shared/Infrastructure/Outbox/Fixtures/'

@@ -13,6 +13,8 @@ framework:
             async.bus: ~
         transports:
             async: '%env(MESSENGER_TRANSPORT_DSN)%'
+        routing:
+            App\Shared\Infrastructure\Outbox\AsyncMessageInterface: async
 
 when@test:
     framework:
