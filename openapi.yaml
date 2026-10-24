@@ -406,6 +406,7 @@ components:
           type: string
         quantity:
           type: integer
+          example: 2
       type: object
     PlaceOrderRequest:
       required:

@@ -14,6 +14,7 @@ final readonly class OrderLineRequest
     public function __construct(
         #[OA\Property(description: 'ULID of the price tier.')]
         public string $priceTierId,
+        #[OA\Property(example: 2)]
         public int $quantity,
     ) {
     }

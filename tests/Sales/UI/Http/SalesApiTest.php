@@ -333,6 +333,24 @@ final class SalesApiTest extends WebTestCase
                 self::assertArrayHasKey($status, $doc['paths'][$path][$method]['responses']);
             }
         }
+
+        self::assertSame(2, $this->docNode($doc, 'components', 'schemas', 'OrderLineRequest', 'properties', 'quantity', 'example'));
+        self::assertSame(42, $this->docNode($doc, 'paths', '/api/events/{eventId}/availability', 'get', 'responses', '200', 'content', 'application/json', 'schema', 'properties', 'remaining', 'example'));
+    }
+
+    /**
+     * @param array<mixed> $doc
+     */
+    private function docNode(array $doc, string ...$keys): mixed
+    {
+        $node = $doc;
+        foreach ($keys as $key) {
+            self::assertIsArray($node);
+            self::assertArrayHasKey($key, $node);
+            $node = $node[$key];
+        }
+
+        return $node;
     }
 
     /**
