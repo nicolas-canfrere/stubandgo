@@ -47,7 +47,7 @@ final class CatalogApiTest extends WebTestCase
             'id' => $upcoming,
             'title' => 'Concert',
             'venue' => 'La Cigale',
-            'startsAt' => '2026-12-01T20:00:00+01:00',
+            'startsAt' => '2026-12-01T19:00:00Z',
             'organization' => ['slug' => $organization['slug']],
         ], $byId[$upcoming]);
         self::assertArrayNotHasKey($draft, $byId);
@@ -59,12 +59,16 @@ final class CatalogApiTest extends WebTestCase
      */
     public static function startsAtConversions(): iterable
     {
-        yield 'winter, UTC input' => ['2026-12-01T19:00:00+00:00', '2026-12-01T20:00:00+01:00'];
-        yield 'summer, UTC input' => ['2027-07-01T20:00:00Z', '2027-07-01T22:00:00+02:00'];
+        yield 'winter, UTC input' => ['2026-12-01T19:00:00+00:00', '2026-12-01T19:00:00Z'];
+        yield 'winter, Paris input' => ['2026-12-01T20:00:00+01:00', '2026-12-01T19:00:00Z'];
+        yield 'summer, UTC input' => ['2027-07-01T20:00:00Z', '2027-07-01T20:00:00Z'];
+        yield 'summer, Paris input' => ['2027-07-01T22:00:00+02:00', '2027-07-01T20:00:00Z'];
+        yield 'summer, New York input' => ['2027-07-01T16:00:00-04:00', '2027-07-01T20:00:00Z'];
+        yield 'day change, Tokyo input' => ['2027-01-02T05:30:00+09:00', '2027-01-01T20:30:00Z'];
     }
 
     #[DataProvider('startsAtConversions')]
-    public function testStartsAtIsExposedInParisTime(string $stored, string $expected): void
+    public function testStartsAtIsExposedInUtcWhateverTheInputTimezone(string $stored, string $expected): void
     {
         $organization = $this->createOrganization();
         $eventId = $this->createEvent($organization['id'], $stored, publish: true);
@@ -95,8 +99,8 @@ final class CatalogApiTest extends WebTestCase
             'slug' => $organization['slug'],
             'name' => 'Rock Asso',
             'events' => [
-                ['id' => $first, 'title' => 'First', 'venue' => 'La Cigale', 'startsAt' => '2026-12-01T20:00:00+01:00', 'organization' => ['slug' => $organization['slug']]],
-                ['id' => $second, 'title' => 'Second', 'venue' => 'La Cigale', 'startsAt' => '2026-12-02T20:00:00+01:00', 'organization' => ['slug' => $organization['slug']]],
+                ['id' => $first, 'title' => 'First', 'venue' => 'La Cigale', 'startsAt' => '2026-12-01T19:00:00Z', 'organization' => ['slug' => $organization['slug']]],
+                ['id' => $second, 'title' => 'Second', 'venue' => 'La Cigale', 'startsAt' => '2026-12-02T19:00:00Z', 'organization' => ['slug' => $organization['slug']]],
             ],
         ], $catalog);
     }
@@ -137,7 +141,7 @@ final class CatalogApiTest extends WebTestCase
             'title' => 'Concert',
             'description' => 'Un super concert',
             'venue' => 'La Cigale',
-            'startsAt' => '2026-12-01T20:00:00+01:00',
+            'startsAt' => '2026-12-01T19:00:00Z',
             'capacity' => 100,
             'organization' => ['slug' => $organization['slug']],
             'priceTiers' => [

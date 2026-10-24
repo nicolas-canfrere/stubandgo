@@ -28,7 +28,7 @@ nelmio_api_doc:
                         id: { type: string, description: ULID of the event, example: 01JAE5Z8Q3M4N6P7R8S9T0V1W2 }
                         title: { type: string, example: Soirée Rock }
                         venue: { type: string, example: La Cigale }
-                        startsAt: { type: string, format: date-time, description: Start in Europe/Paris time, example: '2026-11-20T20:00:00+01:00' }
+                        startsAt: { type: string, format: date-time, description: 'Start in UTC (RFC 3339, Z suffix); the front converts it for display', example: '2026-11-20T19:00:00Z' }
                         organization: { $ref: '#/components/schemas/OrganizationReference' }
                 PriceTier:
                     type: object
@@ -45,7 +45,7 @@ nelmio_api_doc:
                         title: { type: string }
                         description: { type: string }
                         venue: { type: string }
-                        startsAt: { type: string, format: date-time, description: Start in Europe/Paris time, example: '2026-11-20T20:00:00+01:00' }
+                        startsAt: { type: string, format: date-time, description: 'Start in UTC (RFC 3339, Z suffix); the front converts it for display', example: '2026-11-20T19:00:00Z' }
                         capacity: { type: integer, example: 200 }
                         organization: { $ref: '#/components/schemas/OrganizationReference' }
                         priceTiers:
