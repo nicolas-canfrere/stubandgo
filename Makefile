@@ -7,7 +7,7 @@ COMPOSER = docker run --rm \
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install composer-cli up down test crap mutation phpstan cs-check cs-fix lint
+.PHONY: help install composer-cli up down console php-sh test crap mutation phpstan cs-check cs-fix lint
 
 help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  %-14s %s\n", $$1, $$2}'
@@ -23,6 +23,12 @@ up: ## Start the dev stack (nginx + php)
 
 down: ## Stop and remove the dev stack
 	docker compose down
+
+console: ## Run a Symfony console command (make console CMD="debug:router")
+	docker compose run --rm php bin/console $(CMD)
+
+php-sh: ## Open a shell in the PHP container
+	docker compose run --rm php sh
 
 test: ## Run the PHPUnit test suite
 	docker compose -f compose.test.yaml run --rm php bin/phpunit
