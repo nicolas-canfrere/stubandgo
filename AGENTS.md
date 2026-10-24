@@ -86,6 +86,26 @@ Install `symfony/test-pack` if it isn't already. Functional/HTTP tests extend
 until it has a test that exercises it the way a caller would, an HTTP request for
 a controller or a service call for a service, not just "it didn't throw."
 
+## Feature workflow
+
+Every change or addition of a feature follows these steps, in order. Don't skip
+one because the change looks small.
+
+1. **Test first.** Write the tests that describe the expected behaviour, run
+   `make test`, and confirm they fail for the right reason (missing behaviour,
+   not a typo or a broken fixture).
+2. **Implement** the minimum code that makes them pass. Run `make test` until
+   the whole suite is green.
+3. **CRAP < 9.** Run `make crap`. Every method must have a CRAP score strictly
+   below 9; the target exits non-zero and lists the offenders otherwise. Fix an
+   offender by refactoring (extract methods, remove branches) and/or covering
+   the untested paths, then re-run `make test` and `make crap`.
+4. **Mutation testing.** Run `make mutation` and read
+   `var/infection/infection.log`. `infection.json5` requires 100% MSI and
+   covered MSI, so the target fails on any escaped or uncovered mutant: kill
+   each one with a sharper test. If a mutant is genuinely
+   equivalent, say so explicitly with the reason instead of ignoring it.
+
 ## Code style
 
 Symfony's coding standard, the `@Symfony` php-cs-fixer ruleset (a PSR-12-derived
