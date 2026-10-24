@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Catalog\Core\Application\Command;
 
-final readonly class CreateEvent
+use App\Shared\Bus\CommandInterface;
+
+final readonly class CreateEvent implements CommandInterface
 {
     /**
      * @param string                                                          $startsAt   ISO 8601 date-time with offset

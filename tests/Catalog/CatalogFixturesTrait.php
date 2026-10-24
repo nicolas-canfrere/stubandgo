@@ -8,6 +8,7 @@ use App\Catalog\Core\Application\Command\CreateEvent;
 use App\Catalog\Core\Application\Command\CreateOrganization;
 use App\Catalog\Core\Application\Command\PublishEvent;
 use App\Shared\Bus\CommandBusInterface;
+use App\Shared\Bus\CommandInterface;
 use App\Shared\Bus\QueryBusInterface;
 use App\Shared\Bus\QueryInterface;
 use App\Shared\Identity\EventId;
@@ -18,7 +19,7 @@ trait CatalogFixturesTrait
 {
     protected const string NOW = '2026-10-24T12:00:00+00:00';
 
-    protected function command(object $command): void
+    protected function command(CommandInterface $command): void
     {
         self::getContainer()->get(CommandBusInterface::class)->dispatch($command);
     }

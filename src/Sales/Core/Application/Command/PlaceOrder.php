@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Sales\Core\Application\Command;
 
-final readonly class PlaceOrder
+use App\Shared\Bus\CommandInterface;
+
+final readonly class PlaceOrder implements CommandInterface
 {
     /**
      * @param list<array{priceTierId: string, quantity: int}> $lines

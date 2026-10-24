@@ -75,6 +75,8 @@ abstract classes prefixed `Abstract`; no `Class`/`Enum` suffix.
 - Queries implement `App\Shared\Bus\QueryInterface` with
   `@implements QueryInterface<ResultType>`, so `QueryBusInterface::ask()`
   returns a typed result (no `@var` at call sites).
+- Commands implement `App\Shared\Bus\CommandInterface`, so
+  `CommandBusInterface::dispatch()` only accepts commands.
 - Never open a transaction by hand in a handler.
 
 ### Asynchronous messages

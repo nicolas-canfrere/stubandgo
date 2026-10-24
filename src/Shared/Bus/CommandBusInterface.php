@@ -6,5 +6,5 @@ namespace App\Shared\Bus;
 
 interface CommandBusInterface
 {
-    public function dispatch(object $command): void;
+    public function dispatch(CommandInterface $command): void;
 }

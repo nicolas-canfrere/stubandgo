@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Shared\Infrastructure\Bus;
 
 use App\Shared\Bus\CommandBusInterface;
+use App\Shared\Bus\CommandInterface;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Messenger\MessageBusInterface;
 
@@ -16,7 +17,7 @@ final readonly class MessengerCommandBus implements CommandBusInterface
     {
     }
 
-    public function dispatch(object $command): void
+    public function dispatch(CommandInterface $command): void
     {
         $this->dispatchUnwrapped($this->bus, $command);
     }

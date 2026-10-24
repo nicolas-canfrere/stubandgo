@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Sales\Core\Application\Command;
 
-final readonly class PayOrder
+use App\Shared\Bus\CommandInterface;
+
+final readonly class PayOrder implements CommandInterface
 {
     /**
      * @param string $cardNumber handed to the payment gateway only: never stored, logged or echoed
