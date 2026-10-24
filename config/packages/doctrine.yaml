@@ -6,5 +6,6 @@ doctrine:
 when@test:
     doctrine:
         dbal:
-            # "TEST_TOKEN" is typically set by ParaTest
-            dbname_suffix: '_test%env(default::TEST_TOKEN)%'
+            # A single test database for every PHPUnit process: Infection sets
+            # TEST_TOKEN per thread, so it must not be part of the name.
+            dbname_suffix: '_test'

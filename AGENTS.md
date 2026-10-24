@@ -126,6 +126,10 @@ Xdebug in coverage mode:
 - `make mutation`: Infection on `src/` with the default mutators. It requires
   100% MSI and covered MSI (`infection.json5`); the log is in
   `var/infection/infection.log`, the HTML report in `var/infection/infection.html`.
+  Every Infection thread uses the single `app_test` database; the target then
+  fails if the test database logged any `FATAL` during the run (a test that
+  cannot reach the database would otherwise count its mutants as killed).
+- `make test-down`: stop and remove the test stack.
 
 `phpunit.dist.xml` sets `failOnDeprecation`, `failOnNotice` and
 `failOnWarning`: a deprecation, notice or warning triggered by code in `src/`
