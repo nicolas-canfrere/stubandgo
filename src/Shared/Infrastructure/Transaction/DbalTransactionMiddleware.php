@@ -22,14 +22,29 @@ final readonly class DbalTransactionMiddleware implements MiddlewareInterface
         try {
             $envelope = $stack->next()->handle($envelope, $stack);
         } catch (\Throwable $exception) {
-            $this->connection->rollBack();
+            $this->rollBackQuietly();
 
             throw $exception;
         }
 
-        // Outside the guard: DBAL already resets its nesting level when a commit fails.
+        // Outside the guard on purpose. When the commit (or savepoint release) fails at the driver,
+        // DBAL decrements its nesting level in a "finally", so a rollBack() here would hit no
+        // transaction (top level) or the enclosing one (savepoint). Other commit failures, such as
+        // CommitFailedRollbackOnly, are thrown before any state change. In every case the commit
+        // exception propagates unchanged and this middleware does not roll back.
         $this->connection->commit();
 
         return $envelope;
+    }
+
+    /**
+     * A failing rollback must not hide the handler exception that caused it.
+     */
+    private function rollBackQuietly(): void
+    {
+        try {
+            $this->connection->rollBack();
+        } catch (\Throwable) {
+        }
     }
 }

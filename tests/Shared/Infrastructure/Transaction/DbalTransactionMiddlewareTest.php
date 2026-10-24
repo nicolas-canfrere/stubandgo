@@ -46,6 +46,24 @@ final class DbalTransactionMiddlewareTest extends TestCase
         }
     }
 
+    public function testItRethrowsTheHandlerExceptionWhenRollbackFails(): void
+    {
+        $connection = $this->createMock(Connection::class);
+        $connection->expects(self::once())->method('rollBack')->willThrowException(new \LogicException('rollback failed'));
+
+        $failure = new \RuntimeException('boom');
+
+        try {
+            new DbalTransactionMiddleware($connection)->handle(
+                new Envelope(new \stdClass()),
+                $this->stack(static fn(): never => throw $failure),
+            );
+            self::fail('The handler exception should have been rethrown.');
+        } catch (\RuntimeException $caught) {
+            self::assertSame($failure, $caught);
+        }
+    }
+
     public function testItDoesNotRollBackWhenTheCommitItselfFails(): void
     {
         $commitFailure = new \RuntimeException('commit failed');
