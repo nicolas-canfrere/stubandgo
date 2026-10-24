@@ -49,6 +49,7 @@ final class CatalogUseCasesTest extends AbstractCatalogTestCase
         $listed = array_values(array_filter($this->listUpcoming(), static fn(EventSummaryView $view): bool => \in_array($view->eventId, [$late, $early, $middle], true)));
 
         self::assertSame([$early, $middle, $late], array_map(static fn(EventSummaryView $view): string => $view->eventId, $listed));
+        self::assertSame($organization['slug'], $listed[0]->organizationSlug);
         self::assertSame('Early', $listed[0]->title);
         self::assertSame('La Cigale', $listed[0]->venue);
         self::assertEquals(new \DateTimeImmutable('2026-12-01T20:00:00+00:00'), $listed[0]->startsAt);
@@ -127,6 +128,7 @@ final class CatalogUseCasesTest extends AbstractCatalogTestCase
         self::assertSame('Rock Asso', $catalog->name);
         self::assertSame($organization['slug'], $catalog->slug);
         self::assertSame([$past, $published], array_map(static fn(EventSummaryView $view): string => $view->eventId, $catalog->events));
+        self::assertSame([$organization['slug'], $organization['slug']], array_map(static fn(EventSummaryView $view): string => $view->organizationSlug, $catalog->events));
     }
 
     public function testUnknownSlugThrowsOrganizationNotFound(): void
@@ -153,6 +155,7 @@ final class CatalogUseCasesTest extends AbstractCatalogTestCase
         self::assertInstanceOf(EventDetailView::class, $detail);
         self::assertSame($eventId, $detail->eventId);
         self::assertSame($organization['id'], $detail->organizationId);
+        self::assertSame($organization['slug'], $detail->organizationSlug);
         self::assertSame('Concert', $detail->title);
         self::assertSame('Un super concert', $detail->description);
         self::assertSame('La Cigale', $detail->venue);

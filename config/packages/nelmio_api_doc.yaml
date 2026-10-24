@@ -1,0 +1,66 @@
+nelmio_api_doc:
+    documentation:
+        info:
+            title: stubandgo public catalog API
+            description: Read-only catalog of organizations and published events. Errors follow RFC 9457 Problem Details.
+            version: 1.0.0
+        components:
+            schemas:
+                Problem:
+                    description: RFC 9457 Problem Details (application/problem+json).
+                    type: object
+                    required: [type, title, status, detail, instance]
+                    properties:
+                        type: { type: string, example: /problems/organization_not_found }
+                        title: { type: string, example: Not Found }
+                        status: { type: integer, example: 404 }
+                        detail: { type: string, example: 'Organization with slug "unknown" not found.' }
+                        instance: { type: string, example: /api/organizations/unknown }
+                OrganizationReference:
+                    type: object
+                    required: [slug]
+                    properties:
+                        slug: { type: string, example: demo-rock-asso }
+                EventSummary:
+                    type: object
+                    required: [id, title, venue, startsAt, organization]
+                    properties:
+                        id: { type: string, description: ULID of the event, example: 01JAE5Z8Q3M4N6P7R8S9T0V1W2 }
+                        title: { type: string, example: Soirée Rock }
+                        venue: { type: string, example: La Cigale }
+                        startsAt: { type: string, format: date-time, description: Start in Europe/Paris time, example: '2026-11-20T20:00:00+01:00' }
+                        organization: { $ref: '#/components/schemas/OrganizationReference' }
+                PriceTier:
+                    type: object
+                    required: [id, label, priceCents]
+                    properties:
+                        id: { type: string, description: ULID of the price tier }
+                        label: { type: string, example: Plein }
+                        priceCents: { type: integer, description: Price in euro cents, example: 2500 }
+                EventDetail:
+                    type: object
+                    required: [id, title, description, venue, startsAt, capacity, organization, priceTiers]
+                    properties:
+                        id: { type: string, description: ULID of the event }
+                        title: { type: string }
+                        description: { type: string }
+                        venue: { type: string }
+                        startsAt: { type: string, format: date-time, description: Start in Europe/Paris time, example: '2026-11-20T20:00:00+01:00' }
+                        capacity: { type: integer, example: 200 }
+                        organization: { $ref: '#/components/schemas/OrganizationReference' }
+                        priceTiers:
+                            type: array
+                            items: { $ref: '#/components/schemas/PriceTier' }
+                OrganizationCatalog:
+                    type: object
+                    required: [slug, name, events]
+                    properties:
+                        slug: { type: string, example: demo-rock-asso }
+                        name: { type: string, example: Rock Asso }
+                        events:
+                            type: array
+                            items: { $ref: '#/components/schemas/EventSummary' }
+    areas:
+        default:
+            path_patterns:
+                - ^/api(?!/doc)

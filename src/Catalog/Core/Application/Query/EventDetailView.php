@@ -15,6 +15,7 @@ final readonly class EventDetailView
     public function __construct(
         public string $eventId,
         public string $organizationId,
+        public string $organizationSlug,
         public string $title,
         public string $description,
         public string $venue,
@@ -24,11 +25,12 @@ final readonly class EventDetailView
     ) {
     }
 
-    public static function fromEvent(Event $event): self
+    public static function fromEvent(Event $event, string $organizationSlug): self
     {
         return new self(
             $event->id()->toString(),
             $event->organizationId()->toString(),
+            $organizationSlug,
             $event->title()->toString(),
             $event->description()->toString(),
             $event->venue()->toString(),
