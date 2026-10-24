@@ -79,6 +79,17 @@ final class OutboxRelayTest extends KernelTestCase
         self::assertSame(1, $this->relay->relayBatch(2));
     }
 
+    public function testRelayPublishesFiftyMessagesPerBatchByDefault(): void
+    {
+        for ($i = 0; $i < 51; ++$i) {
+            $this->writer->store(new OutboxFixtureMessage('m' . $i, $i));
+        }
+
+        self::assertSame(50, $this->relay->relayBatch());
+        self::assertCount(50, $this->transport->getSent());
+        self::assertSame(1, $this->countUnpublished());
+    }
+
     public function testRelayKeepsCreationOrder(): void
     {
         foreach (['a', 'b', 'c'] as $text) {
@@ -156,8 +167,7 @@ final class OutboxRelayTest extends KernelTestCase
         self::assertIsArray($poison);
         self::assertNull($poison['published_at']);
         self::assertNotNull($poison['failed_at']);
-        self::assertIsString($poison['failure_reason']);
-        self::assertStringContainsString('App\Gone\Message', $poison['failure_reason']);
+        self::assertSame('Outbox message class "App\Gone\Message" does not exist or is not an async message.', $poison['failure_reason']);
     }
 
     public function testPoisonRowBeforeAValidRowDoesNotBlockIt(): void
@@ -187,7 +197,7 @@ final class OutboxRelayTest extends KernelTestCase
 
         self::assertSame(0, $this->relay->relayBatch());
         self::assertCount(0, $this->transport->getSent());
-        self::assertStringContainsString(\stdClass::class, $this->failureReason());
+        self::assertSame('Outbox message class "stdClass" does not exist or is not an async message.', $this->failureReason());
     }
 
     public function testPayloadRejectedBySerializerIsQuarantinedWithReason(): void

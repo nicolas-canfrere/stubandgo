@@ -38,10 +38,6 @@ class OutboxRelay
                 ['limit' => $limit],
             );
 
-            if ([] === $rows) {
-                return 0;
-            }
-
             $messages = [];
             foreach ($rows as $row) {
                 try {
