@@ -5,7 +5,7 @@ COMPOSER = docker run --rm \
 	--volume $$PWD:/app \
 	--workdir /app
 
-.PHONY: install composer-cli up down test
+.PHONY: install composer-cli up down test mutation
 
 install:
 	$(COMPOSER) composer:$(COMPOSER_VERSION) install
@@ -21,3 +21,6 @@ down:
 
 test:
 	docker compose -f compose.test.yaml run --rm php bin/phpunit
+
+mutation:
+	docker compose -f compose.test.yaml run --rm -e XDEBUG_MODE=coverage php vendor/bin/infection --threads=max
