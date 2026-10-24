@@ -34,10 +34,7 @@ final readonly class PayOrderController
     #[Route('/api/orders/{orderId}/payment', name: 'sales_pay_order', methods: 'POST')]
     #[OA\Post(
         summary: 'Pay a pending order with a card (simulated: 4242424242424242 is accepted, any other card is declined).',
-        requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(
-            required: ['cardNumber'],
-            properties: [new OA\Property(property: 'cardNumber', type: 'string', example: '4242424242424242')],
-        )),
+        requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(ref: '#/components/schemas/PayOrderRequest')),
         tags: ['Sales'],
         parameters: [new OA\Parameter(name: 'orderId', description: 'ULID of the order.', in: 'path', required: true, schema: new OA\Schema(type: 'string'))],
         responses: [

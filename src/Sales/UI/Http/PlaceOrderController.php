@@ -26,21 +26,7 @@ final readonly class PlaceOrderController
     #[Route('/api/orders', name: 'sales_place_order', methods: 'POST')]
     #[OA\Post(
         summary: 'Place an order and reserve its seats; a free order is paid at once.',
-        requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(
-            required: ['eventId', 'buyerEmail', 'lines'],
-            properties: [
-                new OA\Property(property: 'eventId', type: 'string', description: 'ULID of the event.'),
-                new OA\Property(property: 'buyerEmail', type: 'string', example: 'buyer@example.com'),
-                new OA\Property(property: 'lines', type: 'array', items: new OA\Items(
-                    required: ['priceTierId', 'quantity'],
-                    properties: [
-                        new OA\Property(property: 'priceTierId', type: 'string', description: 'ULID of the price tier.'),
-                        new OA\Property(property: 'quantity', type: 'integer', example: 2),
-                    ],
-                    type: 'object',
-                )),
-            ],
-        )),
+        requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(ref: '#/components/schemas/PlaceOrderRequest')),
         tags: ['Sales'],
         responses: [
             new OA\Response(

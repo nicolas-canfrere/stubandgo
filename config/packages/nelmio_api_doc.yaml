@@ -4,6 +4,9 @@ nelmio_api_doc:
             title: stubandgo public API
             description: Catalog of organizations and published events, order placement and simulated payment. Errors follow RFC 9457 Problem Details.
             version: 1.0.0
+        servers:
+            - { url: /, description: Same origin as this API }
+        security: []
         components:
             schemas:
                 Problem:
