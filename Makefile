@@ -5,36 +5,41 @@ COMPOSER = docker run --rm \
 	--volume $$PWD:/app \
 	--workdir /app
 
-.PHONY: install composer-cli up down test mutation phpstan cs-check cs-fix lint
+.DEFAULT_GOAL := help
 
-install:
+.PHONY: help install composer-cli up down test mutation phpstan cs-check cs-fix lint
+
+help: ## List available targets
+	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  %-14s %s\n", $$1, $$2}'
+
+install: ## Install PHP dependencies with Composer
 	$(COMPOSER) composer:$(COMPOSER_VERSION) install
 
-composer-cli:
+composer-cli: ## Open a shell in the Composer container
 	$(COMPOSER) --interactive --tty composer:$(COMPOSER_VERSION) sh
 
-up:
+up: ## Start the dev stack (nginx + php)
 	docker compose up -d
 
-down:
+down: ## Stop and remove the dev stack
 	docker compose down
 
-test:
+test: ## Run the PHPUnit test suite
 	docker compose -f compose.test.yaml run --rm php bin/phpunit
 
-mutation:
+mutation: ## Run mutation testing with Infection
 	docker compose -f compose.test.yaml run --rm -e XDEBUG_MODE=coverage php vendor/bin/infection --threads=max
 
-phpstan:
+phpstan: ## Run PHPStan static analysis
 	docker compose -f compose.test.yaml run --rm php bin/console cache:warmup
 	docker compose -f compose.test.yaml run --rm php vendor/bin/phpstan analyse
 
-cs-check:
+cs-check: ## Check coding standards without modifying files
 	docker compose -f compose.test.yaml run --rm php vendor/bin/php-cs-fixer check --diff
 
-cs-fix:
+cs-fix: ## Fix coding standards
 	docker compose -f compose.test.yaml run --rm php vendor/bin/php-cs-fixer fix
 
-lint:
+lint: ## Fix coding standards, then run PHPStan
 	$(MAKE) cs-fix
 	$(MAKE) phpstan
