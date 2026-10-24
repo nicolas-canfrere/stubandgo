@@ -1,0 +1,43 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+// Fails when a method in a PHPUnit Crap4j report reaches the CRAP threshold.
+// Usage: bin/crap-check <crap4j.xml> [threshold]
+
+$report = $argv[1] ?? 'var/coverage/crap4j.xml';
+$threshold = (float) ($argv[2] ?? 9);
+
+if (!is_file($report)) {
+    fwrite(\STDERR, sprintf("Crap4j report \"%s\" not found.\n", $report));
+    exit(2);
+}
+
+$xml = simplexml_load_file($report);
+if (false === $xml) {
+    fwrite(\STDERR, sprintf("Crap4j report \"%s\" is not valid XML.\n", $report));
+    exit(2);
+}
+
+$offenders = 0;
+foreach ($xml->methods->method as $method) {
+    if ((float) $method->crap >= $threshold) {
+        ++$offenders;
+        printf(
+            "CRAP %s  %s::%s (complexity %s, coverage %s%%)\n",
+            $method->crap,
+            $method->className,
+            $method->methodName,
+            $method->complexity,
+            $method->coverage,
+        );
+    }
+}
+
+if ($offenders > 0) {
+    fwrite(\STDERR, sprintf("%d method(s) with CRAP >= %s.\n", $offenders, $threshold));
+    exit(1);
+}
+
+printf("All %d method(s) have CRAP < %s.\n", count($xml->methods->method), $threshold);

@@ -7,7 +7,7 @@ COMPOSER = docker run --rm \
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install composer-cli up down test mutation phpstan cs-check cs-fix lint
+.PHONY: help install composer-cli up down test crap mutation phpstan cs-check cs-fix lint
 
 help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  %-14s %s\n", $$1, $$2}'
@@ -26,6 +26,10 @@ down: ## Stop and remove the dev stack
 
 test: ## Run the PHPUnit test suite
 	docker compose -f compose.test.yaml run --rm php bin/phpunit
+
+crap: ## Run PHPUnit with coverage and fail on any method with CRAP >= 9
+	docker compose -f compose.test.yaml run --rm php bin/phpunit --coverage-crap4j var/coverage/crap4j.xml
+	docker compose -f compose.test.yaml run --rm php bin/crap-check var/coverage/crap4j.xml 9
 
 mutation: ## Run mutation testing with Infection
 	docker compose -f compose.test.yaml run --rm -e XDEBUG_MODE=coverage php vendor/bin/infection --threads=max
