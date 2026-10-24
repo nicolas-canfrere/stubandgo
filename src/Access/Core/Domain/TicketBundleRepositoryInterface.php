@@ -15,4 +15,12 @@ interface TicketBundleRepositoryInterface
      * @throws TicketBundleNotFoundException
      */
     public function get(OrderId $orderId): TicketBundle;
+
+    /**
+     * Same as get(), locking the bundle row until the end of the transaction, so that concurrent deliveries of
+     * one order are serialised.
+     *
+     * @throws TicketBundleNotFoundException
+     */
+    public function getForUpdate(OrderId $orderId): TicketBundle;
 }

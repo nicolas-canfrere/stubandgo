@@ -1,3 +1,5 @@
 framework:
     mailer:
         dsn: '%env(MAILER_DSN)%'
+        # Tickets are sent synchronously by the async handler: no SendEmailMessage on the default (async) bus.
+        message_bus: false

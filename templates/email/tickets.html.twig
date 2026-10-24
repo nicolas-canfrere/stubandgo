@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="fr">
+    <body>
+        <h1>Vos billets pour {{ event.title }}</h1>
+        {% for ticket in tickets %}
+            <section>
+                <h2>{{ event.title }}</h2>
+                <p>{{ event.startsAt|date('d/m/Y H:i', 'Europe/Paris') }}</p>
+                <p>{{ event.venue }}</p>
+                <p>{{ ticket.tier }}</p>
+                <img src="cid:{{ ticket.image }}" alt="QR code du billet {{ loop.index }}" width="200" height="200">
+            </section>
+        {% endfor %}
+    </body>
+</html>

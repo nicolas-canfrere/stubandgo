@@ -7,6 +7,7 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
+    app.mailer_sender: '%env(MAILER_SENDER)%'
 
 services:
     # default configuration for services in *this* file
@@ -42,6 +43,14 @@ services:
             - { name: messenger.message_handler, bus: query.bus }
     App\Sales\Core\Application\Listener\:
         resource: '../src/Sales/Core/Application/Listener/'
+        tags:
+            - { name: messenger.message_handler, bus: event.bus }
+    App\Access\Core\Application\Command\:
+        resource: '../src/Access/Core/Application/Command/*Handler.php'
+        tags:
+            - { name: messenger.message_handler, bus: command.bus }
+    App\Access\Core\Application\Listener\:
+        resource: '../src/Access/Core/Application/Listener/'
         tags:
             - { name: messenger.message_handler, bus: event.bus }
 
@@ -82,6 +91,17 @@ when@test:
             public: true
         App\Sales\Core\Domain\OrderRepositoryInterface:
             alias: App\Sales\Infrastructure\DbalOrderRepository
+            public: true
+        App\Access\Core\Domain\TicketBundleRepositoryInterface:
+            alias: App\Access\Infrastructure\DbalTicketBundleRepository
+            public: true
+        App\Tests\Access\Fixtures\ControllableTicketTokenGenerator:
+            decorates: App\Access\Infrastructure\RandomTicketTokenGenerator
+            arguments: ['@.inner']
+            public: true
+        App\Tests\Access\Fixtures\RecordingQrCodeRenderer:
+            decorates: App\Access\Infrastructure\EndroidQrCodeRenderer
+            arguments: ['@.inner']
             public: true
         App\Tests\Sales\Fixtures\SalesEventRecorder:
             public: true
