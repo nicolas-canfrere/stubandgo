@@ -5,7 +5,7 @@ COMPOSER = docker run --rm \
 	--volume $$PWD:/app \
 	--workdir /app
 
-.PHONY: install composer-cli up down
+.PHONY: install composer-cli up down test
 
 install:
 	$(COMPOSER) composer:$(COMPOSER_VERSION) install
@@ -18,3 +18,6 @@ up:
 
 down:
 	docker compose down
+
+test:
+	docker compose -f compose.test.yaml run --rm php bin/phpunit

@@ -1,0 +1,13 @@
+name: reservit-test
+
+services:
+  php:
+    build:
+      context: .
+      target: dev
+    user: "${UID:-1000}:${GID:-1000}"
+    environment:
+      APP_ENV: test
+      XDEBUG_MODE: "coverage"
+    volumes:
+      - ./:/app
