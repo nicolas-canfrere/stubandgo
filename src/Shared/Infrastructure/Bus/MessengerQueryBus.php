@@ -19,6 +19,15 @@ final readonly class MessengerQueryBus implements QueryBusInterface
 
     public function ask(object $query): mixed
     {
-        return $this->dispatchUnwrapped($this->bus, $query)->last(HandledStamp::class)?->getResult();
+        $stamps = $this->dispatchUnwrapped($this->bus, $query)->all(HandledStamp::class);
+
+        if (1 !== \count($stamps)) {
+            throw new \LogicException(\sprintf('Query "%s" must be handled exactly once, got %d handled result(s).', $query::class, \count($stamps)));
+        }
+
+        /** @var HandledStamp $stamp */
+        $stamp = $stamps[0];
+
+        return $stamp->getResult();
     }
 }

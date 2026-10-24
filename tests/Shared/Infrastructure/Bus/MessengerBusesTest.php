@@ -13,6 +13,7 @@ use App\Tests\Shared\Infrastructure\Fixtures\FixtureFailureException;
 use App\Tests\Shared\Infrastructure\Fixtures\GetAnswer;
 use App\Tests\Shared\Infrastructure\Fixtures\InsertRow;
 use App\Tests\Shared\Infrastructure\Fixtures\RowInserted;
+use App\Tests\Shared\Infrastructure\Fixtures\TwiceHandledQuery;
 use App\Tests\Shared\Infrastructure\Fixtures\UnhandledEvent;
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -57,6 +58,13 @@ final class MessengerBusesTest extends KernelTestCase
         $this->expectExceptionMessage('query failed');
 
         self::getContainer()->get(QueryBusInterface::class)->ask(new FailingQuery());
+    }
+
+    public function testQueryHandledBySeveralHandlersIsRejected(): void
+    {
+        $this->expectException(\LogicException::class);
+
+        self::getContainer()->get(QueryBusInterface::class)->ask(new TwiceHandledQuery());
     }
 
     public function testEventBusPublishesEveryEvent(): void
