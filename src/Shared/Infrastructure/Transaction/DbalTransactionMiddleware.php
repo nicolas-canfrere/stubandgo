@@ -21,13 +21,15 @@ final readonly class DbalTransactionMiddleware implements MiddlewareInterface
 
         try {
             $envelope = $stack->next()->handle($envelope, $stack);
-            $this->connection->commit();
-
-            return $envelope;
         } catch (\Throwable $exception) {
             $this->connection->rollBack();
 
             throw $exception;
         }
+
+        // Outside the guard: DBAL already resets its nesting level when a commit fails.
+        $this->connection->commit();
+
+        return $envelope;
     }
 }

@@ -46,6 +46,25 @@ final class DbalTransactionMiddlewareTest extends TestCase
         }
     }
 
+    public function testItDoesNotRollBackWhenTheCommitItselfFails(): void
+    {
+        $commitFailure = new \RuntimeException('commit failed');
+        $connection = $this->createMock(Connection::class);
+        $connection->expects(self::once())->method('beginTransaction');
+        $connection->expects(self::once())->method('commit')->willThrowException($commitFailure);
+        $connection->expects(self::never())->method('rollBack');
+
+        try {
+            new DbalTransactionMiddleware($connection)->handle(
+                new Envelope(new \stdClass()),
+                $this->stack(static fn(Envelope $e): Envelope => $e),
+            );
+            self::fail('The commit exception should have been rethrown.');
+        } catch (\RuntimeException $caught) {
+            self::assertSame($commitFailure, $caught);
+        }
+    }
+
     /**
      * @param \Closure(Envelope): Envelope $next
      */
