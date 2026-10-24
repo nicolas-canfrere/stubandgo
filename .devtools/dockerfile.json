@@ -1,0 +1,22 @@
+{
+  "versions": {
+    "php": "8.5.12-fpm-alpine3.24",
+    "xdebug": "3.5.3"
+  },
+  "workdir": "/app",
+  "packages": [
+    "intl",
+    "pdo_pgsql",
+    "opcache",
+    "amqp",
+    "redis"
+  ],
+  "base": {
+    "copy": []
+  },
+  "dev": {
+    "copy": [
+      {"from":  "docker/php/php.dev.ini", "to":  "$PHP_INI_DIR/conf.d/31-php.ini"}
+    ]
+  }
+}
