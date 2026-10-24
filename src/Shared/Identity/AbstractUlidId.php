@@ -19,7 +19,7 @@ abstract readonly class AbstractUlidId
             throw new InvalidValueException(\sprintf('"%s" is not a valid ULID.', $value));
         }
 
-        return new static($value);
+        return new static(Ulid::fromString($value)->toBase32());
     }
 
     final public static function generate(): static

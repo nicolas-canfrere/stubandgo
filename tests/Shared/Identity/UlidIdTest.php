@@ -43,6 +43,20 @@ final class UlidIdTest extends TestCase
         self::assertTrue($b->equals($a));
     }
 
+    public function testLowercaseUlidEqualsUppercaseUlid(): void
+    {
+        $lower = EventId::fromString(strtolower(self::VALID));
+        $upper = EventId::fromString(self::VALID);
+
+        self::assertTrue($lower->equals($upper));
+        self::assertTrue($upper->equals($lower));
+    }
+
+    public function testToStringReturnsCanonicalUppercaseForm(): void
+    {
+        self::assertSame(self::VALID, EventId::fromString(strtolower(self::VALID))->toString());
+    }
+
     public function testIdsWithDifferentValuesAreNotEqual(): void
     {
         $a = EventId::generate();
