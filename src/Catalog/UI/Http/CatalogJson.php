@@ -27,9 +27,11 @@ final class CatalogJson
 
     /**
      * Every date of the API is UTC, RFC 3339 with a Z suffix; the front converts it for display.
+     * Dates are already UTC (Event normalises them), so none is converted here: the `p` format
+     * prints Z for a zero offset and the real offset otherwise, never mislabelling a date.
      */
     public static function date(\DateTimeImmutable $date): string
     {
-        return $date->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z');
+        return $date->format('Y-m-d\TH:i:sp');
     }
 }
