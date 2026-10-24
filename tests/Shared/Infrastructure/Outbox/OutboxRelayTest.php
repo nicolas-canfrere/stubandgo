@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Tests\Shared\Infrastructure\Outbox;
 
 use App\Shared\Bus\CommandBusInterface;
-use App\Shared\Infrastructure\Outbox\InvalidOutboxMessageException;
 use App\Shared\Infrastructure\Outbox\OutboxRelay;
 use App\Shared\Infrastructure\Outbox\OutboxWriterInterface;
 use App\Tests\Shared\Infrastructure\Outbox\Fixtures\OutboxFixtureMessage;
@@ -137,28 +136,85 @@ final class OutboxRelayTest extends KernelTestCase
         self::assertNull($row['published_at']);
     }
 
-    public function testRelayThrowsOnUnknownClassAndKeepsRowUnpublished(): void
+    public function testPoisonRowIsQuarantinedAndGoodRowsAreNotResent(): void
+    {
+        $this->writer->store(new OutboxFixtureMessage('good', 1));
+        $this->insertRow('2030-01-01 00:00:00+00', 'App\Gone\Message', []);
+
+        self::assertSame(1, $this->relay->relayBatch());
+        self::assertSame(0, $this->relay->relayBatch());
+
+        self::assertSame(['good'], $this->sentTexts());
+        $good = $this->connection->fetchAssociative('SELECT published_at, failed_at FROM outbox_message WHERE message_class = ?', [OutboxFixtureMessage::class]);
+        self::assertIsArray($good);
+        self::assertNotNull($good['published_at']);
+        self::assertNull($good['failed_at']);
+        $poison = $this->connection->fetchAssociative("SELECT published_at, failed_at, failure_reason FROM outbox_message WHERE message_class = 'App\\Gone\\Message'");
+        self::assertIsArray($poison);
+        self::assertNull($poison['published_at']);
+        self::assertNotNull($poison['failed_at']);
+        self::assertIsString($poison['failure_reason']);
+        self::assertStringContainsString('App\Gone\Message', $poison['failure_reason']);
+    }
+
+    public function testPoisonRowBeforeAValidRowDoesNotBlockIt(): void
+    {
+        $this->insertRow('2026-01-01 00:00:00+00', 'App\Gone\Message', []);
+        $this->writer->store(new OutboxFixtureMessage('good', 1));
+
+        self::assertSame(1, $this->relay->relayBatch());
+        self::assertSame(['good'], $this->sentTexts());
+    }
+
+    public function testQuarantinedRowIsNeverSelectedAgain(): void
     {
         $this->insertRow('2026-01-01 00:00:00+00', 'App\Gone\Message', []);
 
-        $this->expectException(InvalidOutboxMessageException::class);
-        $this->expectExceptionMessage('App\Gone\Message');
+        self::assertSame(0, $this->relay->relayBatch());
+        $failedAt = $this->connection->fetchOne('SELECT failed_at FROM outbox_message');
+        self::assertSame(0, $this->relay->relayBatch());
 
-        try {
-            $this->relay->relayBatch();
-        } finally {
-            self::assertSame(1, $this->countUnpublished());
-        }
+        self::assertSame($failedAt, $this->connection->fetchOne('SELECT failed_at FROM outbox_message'));
+        self::assertSame(0, $this->countRows('SELECT COUNT(*) FROM outbox_message WHERE published_at IS NULL AND failed_at IS NULL'));
     }
 
-    public function testRelayThrowsOnClassThatIsNotAnAsyncMessage(): void
+    public function testClassThatIsNotAnAsyncMessageIsQuarantined(): void
     {
         $this->insertRow('2026-01-01 00:00:00+00', \stdClass::class, []);
 
-        $this->expectException(InvalidOutboxMessageException::class);
-        $this->expectExceptionMessage(\stdClass::class);
+        self::assertSame(0, $this->relay->relayBatch());
+        self::assertCount(0, $this->transport->getSent());
+        self::assertStringContainsString(\stdClass::class, $this->failureReason());
+    }
 
-        $this->relay->relayBatch();
+    public function testPayloadRejectedBySerializerIsQuarantinedWithReason(): void
+    {
+        $this->insertRow('2026-01-01 00:00:00+00', OutboxFixtureMessage::class, ['text' => 'only']);
+
+        self::assertSame(0, $this->relay->relayBatch());
+        self::assertCount(0, $this->transport->getSent());
+        $reason = $this->failureReason();
+        self::assertStringStartsWith(OutboxFixtureMessage::class . ': ', $reason);
+        self::assertStringNotContainsString('only', $reason);
+    }
+
+    public function testQuarantinedRowsDoNotConsumeTheBatchLimitForOthers(): void
+    {
+        $this->insertRow('2026-01-01 00:00:00+00', 'App\Gone\Message', []);
+        $this->writer->store(new OutboxFixtureMessage('a', 1));
+        $this->writer->store(new OutboxFixtureMessage('b', 1));
+
+        self::assertSame(1, $this->relay->relayBatch(2));
+        self::assertSame(1, $this->relay->relayBatch(2));
+        self::assertSame(['a', 'b'], $this->sentTexts());
+    }
+
+    private function failureReason(): string
+    {
+        $reason = $this->connection->fetchOne('SELECT failure_reason FROM outbox_message');
+        self::assertIsString($reason);
+
+        return $reason;
     }
 
     private function countUnpublished(): int
