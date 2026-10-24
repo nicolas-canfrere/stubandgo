@@ -21,3 +21,22 @@ services:
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
+
+when@test:
+    services:
+        _defaults:
+            autowire: true
+            autoconfigure: true
+
+        App\Shared\Bus\CommandBusInterface:
+            alias: App\Shared\Infrastructure\Bus\MessengerCommandBus
+            public: true
+        App\Shared\Bus\QueryBusInterface:
+            alias: App\Shared\Infrastructure\Bus\MessengerQueryBus
+            public: true
+        App\Shared\Bus\EventBusInterface:
+            alias: App\Shared\Infrastructure\Bus\MessengerEventBus
+            public: true
+        App\Tests\Shared\Infrastructure\Fixtures\:
+            resource: '../tests/Shared/Infrastructure/Fixtures/'
+            exclude: '../tests/Shared/Infrastructure/Fixtures/*Exception.php'

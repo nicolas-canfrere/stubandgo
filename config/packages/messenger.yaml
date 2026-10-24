@@ -1,5 +1,16 @@
 framework:
     messenger:
+        default_bus: async.bus
+        buses:
+            command.bus:
+                middleware:
+                    - App\Shared\Infrastructure\Transaction\DbalTransactionMiddleware
+            query.bus: ~
+            event.bus:
+                default_middleware:
+                    enabled: true
+                    allow_no_handlers: true
+            async.bus: ~
         transports:
             async: '%env(MESSENGER_TRANSPORT_DSN)%'
 

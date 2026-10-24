@@ -9,3 +9,8 @@
 
 controllers:
     resource: routing.controllers
+
+when@test:
+    test_fixtures:
+        resource: ../tests/Shared/Infrastructure/Fixtures/Http/
+        type: attribute
