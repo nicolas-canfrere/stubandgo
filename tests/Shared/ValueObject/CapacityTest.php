@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\Shared\Model;
+namespace App\Tests\Shared\ValueObject;
 
 use App\Shared\InvalidValueException;
-use App\Shared\Model\Capacity;
+use App\Shared\ValueObject\Capacity;
 use PHPUnit\Framework\TestCase;
 
 final class CapacityTest extends TestCase
@@ -32,5 +32,16 @@ final class CapacityTest extends TestCase
     public function testCapacityKeepsValue(): void
     {
         self::assertSame(250, Capacity::of(250)->toInt());
+    }
+
+    public function testCapacityEqualsSameValue(): void
+    {
+        self::assertTrue(Capacity::of(3)->equals(Capacity::of(3)));
+    }
+
+    public function testCapacityDiffersFromOtherValue(): void
+    {
+        self::assertFalse(Capacity::of(3)->equals(Capacity::of(4)));
+        self::assertFalse(Capacity::of(4)->equals(Capacity::of(3)));
     }
 }

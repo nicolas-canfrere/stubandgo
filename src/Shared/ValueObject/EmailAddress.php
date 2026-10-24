@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Shared\Model;
+namespace App\Shared\ValueObject;
 
 use App\Shared\InvalidValueException;
 
@@ -24,5 +24,10 @@ final readonly class EmailAddress
     public function toString(): string
     {
         return $this->value;
+    }
+
+    public function equals(self $other): bool
+    {
+        return $this->value === $other->value;
     }
 }

@@ -6,8 +6,8 @@ namespace App\Shared\Event;
 
 use App\Shared\Identity\EventId;
 use App\Shared\Identity\OrderId;
-use App\Shared\Model\EmailAddress;
-use App\Shared\Model\OrderLine;
+use App\Shared\ValueObject\EmailAddress;
+use App\Shared\ValueObject\OrderLine;
 
 final readonly class OrderPaid
 {

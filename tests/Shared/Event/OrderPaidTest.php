@@ -8,9 +8,9 @@ use App\Shared\Event\OrderPaid;
 use App\Shared\Identity\EventId;
 use App\Shared\Identity\OrderId;
 use App\Shared\Identity\PriceTierId;
-use App\Shared\Model\EmailAddress;
-use App\Shared\Model\OrderLine;
-use App\Shared\Model\Quantity;
+use App\Shared\ValueObject\EmailAddress;
+use App\Shared\ValueObject\OrderLine;
+use App\Shared\ValueObject\Quantity;
 use PHPUnit\Framework\TestCase;
 
 final class OrderPaidTest extends TestCase

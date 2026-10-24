@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Shared\Event;
 
 use App\Shared\Identity\EventId;
-use App\Shared\Model\Capacity;
+use App\Shared\ValueObject\Capacity;
 
 final readonly class EventPublished
 {
