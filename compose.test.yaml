@@ -1,4 +1,4 @@
-name: reservit-test
+name: stubandgo-test
 
 services:
   php:
