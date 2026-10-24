@@ -33,6 +33,6 @@ final class FixtureController
     #[Route('/_test/crash', methods: 'GET')]
     public function crash(): Response
     {
-        throw new \RuntimeException('crash');
+        throw new \RuntimeException('secret internals');
     }
 }
