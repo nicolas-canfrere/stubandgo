@@ -19,6 +19,20 @@ services:
     App\:
         resource: '../src/'
 
+    # Catalog.Application cannot depend on Messenger: handlers are registered here, not with #[AsMessageHandler].
+    App\Catalog\Core\Application\Command\:
+        resource: '../src/Catalog/Core/Application/Command/*Handler.php'
+        tags:
+            - { name: messenger.message_handler, bus: command.bus }
+    App\Catalog\Core\Application\Query\:
+        resource: '../src/Catalog/Core/Application/Query/*Handler.php'
+        tags:
+            - { name: messenger.message_handler, bus: query.bus }
+    App\Catalog\Core\Application\Listener\:
+        resource: '../src/Catalog/Core/Application/Listener/'
+        tags:
+            - { name: messenger.message_handler, bus: event.bus }
+
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
 
@@ -36,6 +50,20 @@ when@test:
             public: true
         App\Shared\Bus\EventBusInterface:
             alias: App\Shared\Infrastructure\Bus\MessengerEventBus
+            public: true
+        App\Catalog\Core\Domain\EventRepositoryInterface:
+            alias: App\Catalog\Infrastructure\DbalEventRepository
+            public: true
+        App\Catalog\Core\Domain\OrganizationRepositoryInterface:
+            alias: App\Catalog\Infrastructure\DbalOrganizationRepository
+            public: true
+        App\Catalog\Core\Application\Published\EventSaleTermsProviderInterface:
+            alias: App\Catalog\Core\Application\Published\RepositoryEventSaleTermsProvider
+            public: true
+        App\Catalog\Core\Application\Published\EventDisplayProviderInterface:
+            alias: App\Catalog\Core\Application\Published\RepositoryEventDisplayProvider
+            public: true
+        App\Tests\Catalog\Core\Application\Fixtures\EventPublishedRecorder:
             public: true
         App\Tests\Shared\Infrastructure\Fixtures\:
             resource: '../tests/Shared/Infrastructure/Fixtures/'

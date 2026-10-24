@@ -21,4 +21,6 @@ interface OrganizationRepositoryInterface
      * @throws OrganizationNotFoundException
      */
     public function getBySlug(Slug $slug): Organization;
+
+    public function find(OrganizationId $id): ?Organization;
 }

@@ -57,6 +57,30 @@ final class Event
         return new self($id, $organizationId, $title, $description, $venue, $startsAt->setTimezone(new \DateTimeZone('UTC')), $capacity, $priceTiers);
     }
 
+    /**
+     * Rebuilds a persisted event: the draft-time checks already passed when it was first created.
+     *
+     * @param list<PriceTier> $priceTiers
+     */
+    public static function reconstitute(
+        EventId $id,
+        OrganizationId $organizationId,
+        EventTitle $title,
+        EventDescription $description,
+        Venue $venue,
+        \DateTimeImmutable $startsAt,
+        Capacity $capacity,
+        array $priceTiers,
+        EventStatus $status,
+        bool $locked,
+    ): self {
+        $event = new self($id, $organizationId, $title, $description, $venue, $startsAt->setTimezone(new \DateTimeZone('UTC')), $capacity, $priceTiers);
+        $event->status = $status;
+        $event->locked = $locked;
+
+        return $event;
+    }
+
     public function publish(): EventPublished
     {
         if (EventStatus::Published === $this->status) {

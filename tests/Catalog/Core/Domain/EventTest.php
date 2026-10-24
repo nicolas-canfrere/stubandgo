@@ -135,6 +135,71 @@ final class EventTest extends TestCase
         self::assertFalse($event->isLocked());
     }
 
+    public function testReconstituteRestoresPublishedLockedState(): void
+    {
+        $id = EventId::generate();
+        $organizationId = OrganizationId::generate();
+        $title = EventTitle::fromString('Concert');
+        $description = EventDescription::fromString('Un super concert');
+        $venue = Venue::fromString('La Cigale');
+        $startsAt = new \DateTimeImmutable('2026-12-31T20:30:00+01:00');
+        $capacity = Capacity::of(100);
+        $tiers = [self::tier('Plein')];
+
+        $event = Event::reconstitute($id, $organizationId, $title, $description, $venue, $startsAt, $capacity, $tiers, EventStatus::Published, true);
+
+        self::assertSame($id, $event->id());
+        self::assertSame($organizationId, $event->organizationId());
+        self::assertSame($title, $event->title());
+        self::assertSame($description, $event->description());
+        self::assertSame($venue, $event->venue());
+        self::assertSame('2026-12-31T19:30:00+00:00', $event->startsAt()->format(\DATE_ATOM));
+        self::assertSame('UTC', $event->startsAt()->getTimezone()->getName());
+        self::assertSame($capacity, $event->capacity());
+        self::assertSame($tiers, $event->priceTiers());
+        self::assertSame(EventStatus::Published, $event->status());
+        self::assertTrue($event->isLocked());
+    }
+
+    public function testReconstituteRestoresDraftUnlockedState(): void
+    {
+        $event = Event::reconstitute(
+            EventId::generate(),
+            OrganizationId::generate(),
+            EventTitle::fromString('Concert'),
+            EventDescription::fromString('Un super concert'),
+            Venue::fromString('La Cigale'),
+            new \DateTimeImmutable('2027-01-01 20:00:00'),
+            Capacity::of(100),
+            [],
+            EventStatus::Draft,
+            false,
+        );
+
+        self::assertSame(EventStatus::Draft, $event->status());
+        self::assertFalse($event->isLocked());
+    }
+
+    public function testReconstitutedPublishedEventCannotBePublishedAgain(): void
+    {
+        $event = Event::reconstitute(
+            EventId::generate(),
+            OrganizationId::generate(),
+            EventTitle::fromString('Concert'),
+            EventDescription::fromString('Un super concert'),
+            Venue::fromString('La Cigale'),
+            new \DateTimeImmutable('2027-01-01 20:00:00'),
+            Capacity::of(100),
+            [self::tier('Plein')],
+            EventStatus::Published,
+            false,
+        );
+
+        $this->expectException(EventAlreadyPublishedException::class);
+
+        $event->publish();
+    }
+
     /**
      * @param list<PriceTier> $tiers
      */
