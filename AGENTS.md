@@ -24,7 +24,26 @@ full stack nobody asked for.
 
 ## Testing
 
+PHPUnit 13, configured in `phpunit.dist.xml`. Tests live in `tests/`, under the
+`App\Tests\` namespace (PSR-4, `autoload-dev`); `tests/bootstrap.php` loads
+`.env` through Dotenv. `symfony/browser-kit` and `symfony/css-selector` are
+installed, so `KernelTestCase` and `WebTestCase` are available.
 
+Tests run in the `php` service of `compose.test.yaml`, with `APP_ENV=test` and
+Xdebug in coverage mode:
+
+- `make test`: the whole suite (`bin/phpunit`).
+- `make crap`: the suite with Crap4j coverage in `var/coverage/crap4j.xml`, then
+  `bin/crap-check`, which fails on any method with CRAP >= 9.
+- `make mutation`: Infection on `src/` with the default mutators. It requires
+  100% MSI and covered MSI (`infection.json5`); the log is in
+  `var/infection/infection.log`, the HTML report in `var/infection/infection.html`.
+
+`phpunit.dist.xml` sets `failOnDeprecation`, `failOnNotice` and
+`failOnWarning`: a deprecation, notice or warning triggered by code in `src/`
+fails the suite.
+
+Coverage, CRAP and mutations are measured on `src/` only.
 
 ## Feature workflow
 
