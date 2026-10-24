@@ -14,7 +14,11 @@ abstract readonly class AbstractTextValue
 
     final public static function fromString(string $value): static
     {
-        $value = trim($value);
+        $value = preg_replace('/^[\s\p{Z}\p{C}]+|[\s\p{Z}\p{C}]+$/u', '', $value);
+
+        if (null === $value) {
+            throw new InvalidValueException(\sprintf('%s must be valid UTF-8.', static::label()));
+        }
 
         if ('' === $value) {
             throw new InvalidValueException(\sprintf('%s must not be blank.', static::label()));

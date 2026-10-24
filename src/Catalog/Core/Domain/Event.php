@@ -54,7 +54,7 @@ final class Event
             throw new InvalidValueException('An event cannot have two price tiers with the same identifier.');
         }
 
-        return new self($id, $organizationId, $title, $description, $venue, $startsAt, $capacity, $priceTiers);
+        return new self($id, $organizationId, $title, $description, $venue, $startsAt->setTimezone(new \DateTimeZone('UTC')), $capacity, $priceTiers);
     }
 
     public function publish(): EventPublished

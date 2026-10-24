@@ -30,7 +30,7 @@ final class EventTest extends TestCase
         $title = EventTitle::fromString('Concert');
         $description = EventDescription::fromString('Un super concert');
         $venue = Venue::fromString('La Cigale');
-        $startsAt = new \DateTimeImmutable('2027-01-01 20:00:00');
+        $startsAt = new \DateTimeImmutable('2026-12-31T20:30:00+01:00');
         $capacity = Capacity::of(100);
         $tiers = [self::tier('Plein')];
 
@@ -41,7 +41,9 @@ final class EventTest extends TestCase
         self::assertSame($title, $event->title());
         self::assertSame($description, $event->description());
         self::assertSame($venue, $event->venue());
-        self::assertSame($startsAt, $event->startsAt());
+        self::assertSame('2026-12-31T19:30:00+00:00', $event->startsAt()->format(\DATE_ATOM));
+        self::assertSame('UTC', $event->startsAt()->getTimezone()->getName());
+        self::assertTrue($startsAt == $event->startsAt());
         self::assertSame($capacity, $event->capacity());
         self::assertSame($tiers, $event->priceTiers());
         self::assertSame(EventStatus::Draft, $event->status());
