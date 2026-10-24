@@ -96,7 +96,7 @@ deptrac:
       - type: bool
         must:
         - type: classLike
-          value: '^(?!App\\)'
+          value: '^(?!App\\)[^\\]+\\'
         must_not:
         - type: classLike
           value: '^Psr\\'
@@ -121,4 +121,3 @@ deptrac:
     Access.UI: [Access.Application, Shared, Psr, Money, Uid, Doctrine, Symfony, Messenger, Vendor]
     Shared: [Psr, Money, Uid]
     Shared.Infrastructure: [Shared, Psr, Money, Uid, Doctrine, Symfony, Messenger, Vendor]
-
