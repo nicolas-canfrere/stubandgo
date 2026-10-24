@@ -9,6 +9,8 @@
         "text": "var/infection/infection.log",
         "html": "var/infection/infection.html"
     },
+    "minMsi": 100,
+    "minCoveredMsi": 100,
     "mutators": {
         "@default": true
     }
