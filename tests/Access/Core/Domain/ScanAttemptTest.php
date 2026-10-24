@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Tests\Access\Core\Domain;
 
 use App\Access\Core\Domain\ScanAttempt;
-use App\Access\Core\Domain\ScanOutcome;
 use App\Access\Core\Domain\ValueObject\PresentedToken;
 use App\Access\Core\Domain\ValueObject\ScanAttemptId;
 use App\Access\Core\Domain\ValueObject\ScanResult;
@@ -19,7 +18,7 @@ final class ScanAttemptTest extends TestCase
         $id = ScanAttemptId::generate();
         $eventId = EventId::generate();
         $token = PresentedToken::fromString('abc');
-        $result = new ScanResult(ScanOutcome::Unknown, null);
+        $result = ScanResult::unknown();
 
         $attempt = ScanAttempt::record($id, $eventId, $token, $result, new \DateTimeImmutable('2026-12-31T20:30:00+01:00'));
 

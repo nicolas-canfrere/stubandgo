@@ -53,6 +53,14 @@ final readonly class EventDisplayInfo
         return $this->startsAt;
     }
 
+    public function equals(self $other): bool
+    {
+        return $this->title === $other->title
+            && $this->venue === $other->venue
+            && $this->startsAt == $other->startsAt
+            && $this->priceTierLabels === $other->priceTierLabels;
+    }
+
     public function labelOf(PriceTierId $id): string
     {
         return $this->priceTierLabels[$id->toString()]

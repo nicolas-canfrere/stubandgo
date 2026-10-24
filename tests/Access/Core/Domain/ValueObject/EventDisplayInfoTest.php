@@ -45,6 +45,19 @@ final class EventDisplayInfoTest extends TestCase
         self::info('Concert', "  \n", []);
     }
 
+    public function testEquals(): void
+    {
+        $tierId = PriceTierId::generate()->toString();
+        $at = new \DateTimeImmutable('2030-01-01T00:00:00Z');
+        $info = EventDisplayInfo::of('Concert', 'Olympia', $at, [$tierId => 'Standard']);
+
+        self::assertTrue($info->equals(EventDisplayInfo::of('Concert', 'Olympia', $at->setTimezone(new \DateTimeZone('Europe/Paris')), [$tierId => 'Standard'])));
+        self::assertFalse($info->equals(EventDisplayInfo::of('Other', 'Olympia', $at, [$tierId => 'Standard'])));
+        self::assertFalse($info->equals(EventDisplayInfo::of('Concert', 'Bercy', $at, [$tierId => 'Standard'])));
+        self::assertFalse($info->equals(EventDisplayInfo::of('Concert', 'Olympia', $at->modify('+1 second'), [$tierId => 'Standard'])));
+        self::assertFalse($info->equals(EventDisplayInfo::of('Concert', 'Olympia', $at, [$tierId => 'Reduced'])));
+    }
+
     /**
      * @param array<string, string> $labels
      */
