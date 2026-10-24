@@ -91,18 +91,34 @@ deptrac:
           value: '^Symfony\\Component\\Uid\\.*'
         - type: classLike
           value: '^Symfony\\Component\\Messenger\\.*'
+    - name: Vendor
+      collectors:
+      - type: bool
+        must:
+        - type: classLike
+          value: '^(?!App\\)'
+        must_not:
+        - type: classLike
+          value: '^Psr\\'
+        - type: classLike
+          value: '^Money\\'
+        - type: classLike
+          value: '^Doctrine\\'
+        - type: classLike
+          value: '^Symfony\\'
   ruleset:
     Catalog.Domain: [Shared, Psr, Money, Uid]
     Catalog.Application: [Catalog.Domain, Shared, Psr, Money, Uid]
-    Catalog.Infrastructure: [Catalog.Application, Catalog.Domain, Shared, Shared.Infrastructure, Psr, Money, Uid, Doctrine, Symfony, Messenger, Sales.Application, Access.Application]
-    Catalog.UI: [Catalog.Application, Shared, Psr, Money, Uid, Doctrine, Symfony, Messenger]
+    Catalog.Infrastructure: [Catalog.Application, Catalog.Domain, Shared, Shared.Infrastructure, Psr, Money, Uid, Doctrine, Symfony, Messenger, Vendor, Sales.Application, Access.Application]
+    Catalog.UI: [Catalog.Application, Shared, Psr, Money, Uid, Doctrine, Symfony, Messenger, Vendor]
     Sales.Domain: [Shared, Psr, Money, Uid]
     Sales.Application: [Sales.Domain, Shared, Psr, Money, Uid]
-    Sales.Infrastructure: [Sales.Application, Sales.Domain, Shared, Shared.Infrastructure, Psr, Money, Uid, Doctrine, Symfony, Messenger, Catalog.Application, Access.Application]
-    Sales.UI: [Sales.Application, Shared, Psr, Money, Uid, Doctrine, Symfony, Messenger]
+    Sales.Infrastructure: [Sales.Application, Sales.Domain, Shared, Shared.Infrastructure, Psr, Money, Uid, Doctrine, Symfony, Messenger, Vendor, Catalog.Application, Access.Application]
+    Sales.UI: [Sales.Application, Shared, Psr, Money, Uid, Doctrine, Symfony, Messenger, Vendor]
     Access.Domain: [Shared, Psr, Money, Uid]
     Access.Application: [Access.Domain, Shared, Psr, Money, Uid]
-    Access.Infrastructure: [Access.Application, Access.Domain, Shared, Shared.Infrastructure, Psr, Money, Uid, Doctrine, Symfony, Messenger, Catalog.Application, Sales.Application]
-    Access.UI: [Access.Application, Shared, Psr, Money, Uid, Doctrine, Symfony, Messenger]
+    Access.Infrastructure: [Access.Application, Access.Domain, Shared, Shared.Infrastructure, Psr, Money, Uid, Doctrine, Symfony, Messenger, Vendor, Catalog.Application, Sales.Application]
+    Access.UI: [Access.Application, Shared, Psr, Money, Uid, Doctrine, Symfony, Messenger, Vendor]
     Shared: [Psr, Money, Uid]
-    Shared.Infrastructure: [Shared, Psr, Money, Uid, Doctrine, Symfony, Messenger]
+    Shared.Infrastructure: [Shared, Psr, Money, Uid, Doctrine, Symfony, Messenger, Vendor]
+
