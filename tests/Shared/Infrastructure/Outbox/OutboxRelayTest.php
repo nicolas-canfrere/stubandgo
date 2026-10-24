@@ -9,7 +9,10 @@ use App\Shared\Infrastructure\Outbox\OutboxRelay;
 use App\Shared\Infrastructure\Outbox\OutboxWriterInterface;
 use App\Tests\Shared\Infrastructure\Outbox\Fixtures\OutboxFixtureMessage;
 use App\Tests\Shared\Infrastructure\Outbox\Fixtures\StoreOutboxMessage;
+use App\Tests\Shared\Infrastructure\Outbox\Fixtures\ThrowingOutboxMessage;
 use Doctrine\DBAL\Connection;
+use Psr\Clock\ClockInterface;
+use Psr\Log\AbstractLogger;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Messenger\Transport\InMemory\InMemoryTransport;
 use Symfony\Component\Uid\Uuid;
@@ -198,7 +201,7 @@ final class OutboxRelayTest extends KernelTestCase
         self::assertStringNotContainsString('only', $reason);
     }
 
-    public function testQuarantinedRowsDoNotConsumeTheBatchLimitForOthers(): void
+    public function testQuarantinedRowFreesTheQueueForTheNextBatch(): void
     {
         $this->insertRow('2026-01-01 00:00:00+00', 'App\Gone\Message', []);
         $this->writer->store(new OutboxFixtureMessage('a', 1));
@@ -207,6 +210,47 @@ final class OutboxRelayTest extends KernelTestCase
         self::assertSame(1, $this->relay->relayBatch(2));
         self::assertSame(1, $this->relay->relayBatch(2));
         self::assertSame(['a', 'b'], $this->sentTexts());
+    }
+
+    public function testMessageWhoseConstructorThrowsIsQuarantinedAndDoesNotBlockTheQueue(): void
+    {
+        $this->insertRow('2026-01-01 00:00:00+00', ThrowingOutboxMessage::class, ['text' => 'x']);
+        $this->writer->store(new OutboxFixtureMessage('good', 1));
+
+        self::assertSame(1, $this->relay->relayBatch());
+        self::assertSame(['good'], $this->sentTexts());
+        self::assertStringContainsString('guard failed', $this->failureReason());
+    }
+
+    public function testQuarantineIsLoggedAsErrorWithoutPayload(): void
+    {
+        $logger = new class extends AbstractLogger {
+            /** @var list<array{level: mixed, message: string, context: array<mixed>}> */
+            public array $records = [];
+
+            public function log(mixed $level, string|\Stringable $message, array $context = []): void
+            {
+                $this->records[] = ['level' => $level, 'message' => (string) $message, 'context' => $context];
+            }
+        };
+        $container = self::getContainer();
+        $bus = $container->get('async.bus');
+        $clock = $container->get(ClockInterface::class);
+        $serializer = $container->get('serializer');
+        $relay = new OutboxRelay($this->connection, $serializer, $clock, $bus, $logger);
+        $this->insertRow('2026-01-01 00:00:00+00', 'App\\Gone\\Message', ['secret' => 'payload-value']);
+        $id = $this->connection->fetchOne('SELECT id FROM outbox_message');
+
+        $relay->relayBatch();
+
+        self::assertCount(1, $logger->records);
+        self::assertSame('error', $logger->records[0]['level']);
+        self::assertSame('Outbox message quarantined.', $logger->records[0]['message']);
+        self::assertSame(
+            ['outbox_message_id' => $id, 'message_class' => 'App\\Gone\\Message', 'reason' => $this->failureReason()],
+            $logger->records[0]['context'],
+        );
+        self::assertStringNotContainsString('payload-value', json_encode($logger->records, \JSON_THROW_ON_ERROR));
     }
 
     private function failureReason(): string

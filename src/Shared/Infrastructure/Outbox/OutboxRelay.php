@@ -7,9 +7,9 @@ namespace App\Shared\Infrastructure\Outbox;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Psr\Clock\ClockInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Messenger\MessageBusInterface;
-use Symfony\Component\Serializer\Exception\ExceptionInterface;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 
 class OutboxRelay
@@ -20,6 +20,7 @@ class OutboxRelay
         private readonly ClockInterface $clock,
         #[Autowire(service: 'async.bus')]
         private readonly MessageBusInterface $asyncBus,
+        private readonly LoggerInterface $logger,
     ) {
     }
 
@@ -45,7 +46,7 @@ class OutboxRelay
             foreach ($rows as $row) {
                 try {
                     $messages[$row['id']] = $this->denormalize($row['message_class'], $row['payload']);
-                } catch (InvalidOutboxMessageException|ExceptionInterface $exception) {
+                } catch (\Throwable $exception) {
                     $this->quarantine($row['id'], $row['message_class'], $exception);
                 }
             }
@@ -75,16 +76,15 @@ class OutboxRelay
         return $message;
     }
 
-    private function quarantine(string $id, string $class, \Throwable $reason): void
+    private function quarantine(string $id, string $class, \Throwable $exception): void
     {
+        $reason = $exception instanceof InvalidOutboxMessageException ? $exception->getMessage() : \sprintf('%s: %s', $class, $exception->getMessage());
+
         $this->connection->executeStatement(
             'UPDATE outbox_message SET failed_at = :now, failure_reason = :reason WHERE id = :id',
-            [
-                'now' => $this->now(),
-                'reason' => $reason instanceof InvalidOutboxMessageException ? $reason->getMessage() : \sprintf('%s: %s', $class, $reason->getMessage()),
-                'id' => $id,
-            ],
+            ['now' => $this->now(), 'reason' => $reason, 'id' => $id],
         );
+        $this->logger->error('Outbox message quarantined.', ['outbox_message_id' => $id, 'message_class' => $class, 'reason' => $reason]);
     }
 
     /**
