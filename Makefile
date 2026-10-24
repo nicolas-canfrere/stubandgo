@@ -5,7 +5,7 @@ COMPOSER = docker run --rm \
 	--volume $$PWD:/app \
 	--workdir /app
 
-.PHONY: install composer-cli up down test mutation
+.PHONY: install composer-cli up down test mutation phpstan cs-check cs-fix lint
 
 install:
 	$(COMPOSER) composer:$(COMPOSER_VERSION) install
@@ -24,3 +24,17 @@ test:
 
 mutation:
 	docker compose -f compose.test.yaml run --rm -e XDEBUG_MODE=coverage php vendor/bin/infection --threads=max
+
+phpstan:
+	docker compose -f compose.test.yaml run --rm php bin/console cache:warmup
+	docker compose -f compose.test.yaml run --rm php vendor/bin/phpstan analyse
+
+cs-check:
+	docker compose -f compose.test.yaml run --rm php vendor/bin/php-cs-fixer check --diff
+
+cs-fix:
+	docker compose -f compose.test.yaml run --rm php vendor/bin/php-cs-fixer fix
+
+lint:
+	$(MAKE) cs-fix
+	$(MAKE) phpstan

@@ -1,0 +1,15 @@
+includes:
+    - vendor/phpstan/phpstan-symfony/extension.neon
+    - vendor/phpstan/phpstan-symfony/rules.neon
+    - vendor/phpstan/phpstan-phpunit/extension.neon
+    - vendor/phpstan/phpstan-phpunit/rules.neon
+
+parameters:
+    level: max
+    paths:
+        - src/
+        - tests/
+    excludePaths:
+        - tests/bootstrap.php
+    symfony:
+        containerXmlPath: var/cache/test/App_KernelTestDebugContainer.xml
