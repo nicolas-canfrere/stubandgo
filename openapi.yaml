@@ -1,0 +1,435 @@
+openapi: 3.0.0
+info:
+  title: 'stubandgo public API'
+  description: 'Catalog of organizations and published events, order placement and simulated payment. Errors follow RFC 9457 Problem Details.'
+  version: 1.0.0
+servers:
+  -
+    url: /
+    description: 'Same origin as this API'
+paths:
+  '/api/events/{eventId}':
+    get:
+      tags:
+        - Catalog
+      summary: 'Show a published event with its price tiers.'
+      operationId: get_catalog_get_event_detail
+      parameters:
+        -
+          name: eventId
+          in: path
+          description: 'ULID of the event.'
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 'The event detail.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventDetail'
+        '404':
+          description: 'The event does not exist or is not published (problem type /problems/event_not_found).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: 'The event identifier is not a valid ULID (problem type /problems/invalid_value).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  '/api/organizations/{slug}':
+    get:
+      tags:
+        - Catalog
+      summary: 'Show an organization and its published events, earliest first.'
+      operationId: get_catalog_get_organization_catalog
+      parameters:
+        -
+          name: slug
+          in: path
+          description: 'URL identifier of the organization.'
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 'The organization catalog.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationCatalog'
+        '404':
+          description: 'No organization has this slug (problem type /problems/organization_not_found).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/events:
+    get:
+      tags:
+        - Catalog
+      summary: 'List the published events that have not started yet, earliest first.'
+      operationId: get_catalog_list_upcoming_events
+      responses:
+        '200':
+          description: 'The upcoming events.'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EventSummary'
+  '/api/events/{eventId}/availability':
+    get:
+      tags:
+        - Sales
+      summary: 'Show how many seats are still available for an event.'
+      operationId: get_sales_get_event_availability
+      parameters:
+        -
+          name: eventId
+          in: path
+          description: 'ULID of the event.'
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 'The remaining seats.'
+          content:
+            application/json:
+              schema:
+                required:
+                  - eventId
+                  - remaining
+                properties:
+                  eventId: { type: string }
+                  remaining: { type: integer, example: 42 }
+                type: object
+        '422':
+          description: 'The event is not on sale (/problems/event_not_on_sale) or its identifier is not a valid ULID (/problems/invalid_value).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  '/api/orders/{orderId}':
+    get:
+      tags:
+        - Sales
+      summary: 'Show the status of an order (never the buyer email).'
+      operationId: get_sales_get_order_status
+      parameters:
+        -
+          name: orderId
+          in: path
+          description: 'ULID of the order.'
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 'The order status.'
+          content:
+            application/json:
+              schema:
+                required:
+                  - id
+                  - status
+                  - eventId
+                  - lines
+                  - totalCents
+                properties:
+                  id: { type: string }
+                  status: { type: string, enum: [pending, paid, failed, expired] }
+                  eventId: { type: string }
+                  lines: { type: array, items: { properties: { priceTierId: { type: string }, quantity: { type: integer }, unitPriceCents: { type: integer } }, type: object } }
+                  totalCents: { description: 'Total in euro cents.', type: integer }
+                type: object
+        '404':
+          description: 'The order does not exist (problem type /problems/order_not_found).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: 'The order identifier is not a valid ULID (problem type /problems/invalid_value).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  '/api/orders/{orderId}/payment':
+    post:
+      tags:
+        - Sales
+      summary: 'Pay a pending order with a card (simulated: 4242424242424242 is accepted, any other card is declined).'
+      operationId: post_sales_pay_order
+      parameters:
+        -
+          name: orderId
+          in: path
+          description: 'ULID of the order.'
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PayOrderRequest'
+      responses:
+        '200':
+          description: 'The order is paid.'
+          content:
+            application/json:
+              schema:
+                required:
+                  - status
+                properties:
+                  status: { type: string, example: paid }
+                type: object
+        '402':
+          description: 'The card was declined (problem type /problems/payment_declined, orderStatus member "failed").'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: 'The order does not exist (problem type /problems/order_not_found).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: 'The order expired before payment (/problems/order_expired, orderStatus member "expired") or is not pending (/problems/order_not_pending).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: 'Malformed payload (/problems/validation_failed) or invalid card number (/problems/invalid_value).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/orders:
+    post:
+      tags:
+        - Sales
+      summary: 'Place an order and reserve its seats; a free order is paid at once.'
+      operationId: post_sales_place_order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlaceOrderRequest'
+      responses:
+        '201':
+          description: 'The order was placed; its URL is in the Location header.'
+          headers:
+            Location:
+              description: 'URL of the order.'
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                required:
+                  - id
+                  - status
+                properties:
+                  id: { description: 'ULID of the order.', type: string }
+                  status: { type: string, enum: [pending, paid] }
+                type: object
+        '409':
+          description: 'Not enough seats left (problem type /problems/sold_out).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: 'Malformed payload (/problems/validation_failed, with a violations member) or a business rule is broken: invalid_value, empty_order, order_too_large, unknown_price_tier, duplicate_price_tier, event_not_on_sale, sales_closed.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+components:
+  schemas:
+    Problem:
+      description: 'RFC 9457 Problem Details (application/problem+json).'
+      required:
+        - type
+        - title
+        - status
+        - detail
+        - instance
+      properties:
+        type:
+          type: string
+          example: /problems/organization_not_found
+        title:
+          type: string
+          example: 'Not Found'
+        status:
+          type: integer
+          example: 404
+        detail:
+          type: string
+          example: 'Organization with slug "unknown" not found.'
+        instance:
+          type: string
+          example: /api/organizations/unknown
+      type: object
+    OrganizationReference:
+      required:
+        - slug
+      properties:
+        slug:
+          type: string
+          example: demo-rock-asso
+      type: object
+    EventSummary:
+      required:
+        - id
+        - title
+        - venue
+        - startsAt
+        - organization
+      properties:
+        id:
+          description: 'ULID of the event'
+          type: string
+          example: 01JAE5Z8Q3M4N6P7R8S9T0V1W2
+        title:
+          type: string
+          example: 'Soirée Rock'
+        venue:
+          type: string
+          example: 'La Cigale'
+        startsAt:
+          description: 'Start in UTC (RFC 3339, Z suffix); the front converts it for display'
+          type: string
+          format: date-time
+          example: '2026-11-20T19:00:00Z'
+        organization:
+          $ref: '#/components/schemas/OrganizationReference'
+      type: object
+    PriceTier:
+      required:
+        - id
+        - label
+        - priceCents
+      properties:
+        id:
+          description: 'ULID of the price tier'
+          type: string
+        label:
+          type: string
+          example: Plein
+        priceCents:
+          description: 'Price in euro cents'
+          type: integer
+          example: 2500
+      type: object
+    EventDetail:
+      required:
+        - id
+        - title
+        - description
+        - venue
+        - startsAt
+        - capacity
+        - organization
+        - priceTiers
+      properties:
+        id:
+          description: 'ULID of the event'
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        venue:
+          type: string
+        startsAt:
+          description: 'Start in UTC (RFC 3339, Z suffix); the front converts it for display'
+          type: string
+          format: date-time
+          example: '2026-11-20T19:00:00Z'
+        capacity:
+          type: integer
+          example: 200
+        organization:
+          $ref: '#/components/schemas/OrganizationReference'
+        priceTiers:
+          type: array
+          items:
+            $ref: '#/components/schemas/PriceTier'
+      type: object
+    OrganizationCatalog:
+      required:
+        - slug
+        - name
+        - events
+      properties:
+        slug:
+          type: string
+          example: demo-rock-asso
+        name:
+          type: string
+          example: 'Rock Asso'
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventSummary'
+      type: object
+    PayOrderRequest:
+      required:
+        - cardNumber
+      properties:
+        cardNumber:
+          type: string
+          example: '4242424242424242'
+      type: object
+    OrderLineRequest:
+      required:
+        - priceTierId
+        - quantity
+      properties:
+        priceTierId:
+          description: 'ULID of the price tier.'
+          type: string
+        quantity:
+          type: integer
+      type: object
+    PlaceOrderRequest:
+      required:
+        - eventId
+        - buyerEmail
+        - lines
+      properties:
+        eventId:
+          description: 'ULID of the event.'
+          type: string
+        buyerEmail:
+          type: string
+          example: buyer@example.com
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderLineRequest'
+      type: object
+security: []
+tags:
+  -
+    name: Catalog
+    description: Catalog
+  -
+    name: Sales
+    description: Sales
+

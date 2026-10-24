@@ -1,4 +1,5 @@
 COMPOSER_VERSION = 2.10.3
+REDOCLY_VERSION = 2.62.1
 
 COMPOSER = docker run --rm \
 	--user $$(id -u):$$(id -g) \
@@ -7,7 +8,7 @@ COMPOSER = docker run --rm \
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install composer-cli up down console php-sh test crap mutation phpstan cs-check cs-fix lint test-db test-down deptrac ci
+.PHONY: help install composer-cli up down console php-sh test crap mutation phpstan cs-check cs-fix lint test-db test-down deptrac openapi openapi-check openapi-lint ci
 
 help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  %-14s %s\n", $$1, $$2}'
@@ -69,4 +70,17 @@ lint: ## Fix coding standards, then run PHPStan
 	$(MAKE) cs-fix
 	$(MAKE) phpstan
 
-ci: cs-check phpstan deptrac test crap mutation ## Run every quality gate
+openapi: ## Regenerate openapi.yaml from the NelmioApiDocBundle documentation
+	docker compose run --rm -T php bin/console nelmio:apidoc:dump --format=yaml 2>/dev/null > openapi.yaml.tmp || { rm -f openapi.yaml.tmp; echo "The OpenAPI dump failed."; exit 1; }
+	mv openapi.yaml.tmp openapi.yaml
+
+openapi-check: ## Fail if openapi.yaml is not up to date with the code
+	@tmp=$$(mktemp); trap 'rm -f "$$tmp"' EXIT; \
+	docker compose run --rm -T php bin/console nelmio:apidoc:dump --format=yaml 2>/dev/null > "$$tmp" || { echo "The OpenAPI dump failed."; exit 1; }; \
+	if ! diff -u openapi.yaml "$$tmp"; then echo "openapi.yaml is out of date: run 'make openapi' and commit the result."; exit 1; fi; \
+	echo "openapi.yaml is up to date."
+
+openapi-lint: ## Lint openapi.yaml with Redocly CLI
+	docker run --rm --user $$(id -u):$$(id -g) --volume $$PWD:/spec --workdir /spec redocly/cli:$(REDOCLY_VERSION) lint openapi.yaml
+
+ci: cs-check phpstan deptrac openapi-check openapi-lint test crap mutation ## Run every quality gate

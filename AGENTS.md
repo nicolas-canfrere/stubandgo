@@ -169,6 +169,28 @@ one because the change looks small.
    covered MSI, so the target fails on any escaped or uncovered mutant: kill
    each one with a sharper test. If a mutant is genuinely
    equivalent, say so explicitly with the reason instead of ignoring it.
+5. **OpenAPI.** Any change to the HTTP API (routes, payloads, responses,
+   documentation attributes) regenerates `openapi.yaml` with `make openapi` and
+   commits it in the same commit.
+
+Before declaring a task done, the whole gate must be green: `make openapi-check`,
+`make openapi-lint`, `make test`, `make crap`, `make mutation`, `make phpstan`,
+`make cs-check` and `make deptrac` (`make ci` runs them all).
+
+## OpenAPI document
+
+The HTTP API is described by NelmioApiDocBundle (`config/packages/nelmio_api_doc.yaml`
+and the OpenAPI attributes on the controllers and request DTOs in `src/*/UI/Http`).
+The generated document is committed as `openapi.yaml` at the repository root:
+
+- `make openapi`: regenerate `openapi.yaml` from `nelmio:apidoc:dump --format=yaml`
+  (deterministic output, no compose noise).
+- `make openapi-check`: regenerate into a temporary file and fail if it differs
+  from the committed `openapi.yaml`.
+- `make openapi-lint`: lint `openapi.yaml` with Redocly CLI (Docker image
+  `redocly/cli`, version pinned by `REDOCLY_VERSION`) against the `recommended`
+  ruleset of `redocly.yaml`. Fix findings at the source (Nelmio config or
+  attributes); never disable or downgrade a rule.
 
 ## Code style
 
