@@ -25,22 +25,26 @@ Un processus séparé, le **relais**, lit ensuite les messages en attente, les p
 
 ```mermaid
 sequenceDiagram
+    participant T as DbalTransactionMiddleware
     participant H as Command handler
     participant DB as PostgreSQL
     participant R as Relais (worker)
     participant MQ as RabbitMQ
     participant C as Consommateur
 
-    H->>DB: BEGIN
+    T->>DB: BEGIN
+    T->>H: handle(command)
     H->>DB: UPDATE sales_order SET status = 'paid'
     H->>DB: INSERT INTO outbox_message (...)
-    H->>DB: COMMIT
-    Note over H,DB: état et message validés ensemble
+    T->>DB: COMMIT
+    Note over T,DB: état et message validés ensemble
 
     loop toutes les 5 secondes
-        R->>DB: BEGIN ; SELECT … FOR UPDATE SKIP LOCKED
+        R->>DB: BEGIN
+        R->>DB: SELECT … FOR UPDATE SKIP LOCKED
         R->>MQ: publish(message)
-        R->>DB: UPDATE outbox_message SET published_at ; COMMIT
+        R->>DB: UPDATE outbox_message SET published_at
+        R->>DB: COMMIT
     end
 
     MQ->>C: message
