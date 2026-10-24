@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Shared\ValueObject;
 
-use App\Shared\InvalidValueException;
+use App\Shared\Exception\InvalidValueException;
 
 final readonly class Quantity
 {

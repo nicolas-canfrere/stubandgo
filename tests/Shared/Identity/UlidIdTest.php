@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Tests\Shared\Identity;
 
+use App\Shared\Exception\InvalidValueException;
 use App\Shared\Identity\EventId;
 use App\Shared\Identity\OrderId;
 use App\Shared\Identity\OrganizationId;
 use App\Shared\Identity\PriceTierId;
-use App\Shared\InvalidValueException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 

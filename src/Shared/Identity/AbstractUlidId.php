@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Shared\Identity;
 
-use App\Shared\InvalidValueException;
+use App\Shared\Exception\InvalidValueException;
 use Symfony\Component\Uid\Ulid;
 
 abstract readonly class AbstractUlidId

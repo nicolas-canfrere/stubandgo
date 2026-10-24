@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Shared\ValueObject;
 
-use App\Shared\InvalidValueException;
+use App\Shared\Exception\InvalidValueException;
 use App\Shared\ValueObject\EmailAddress;
 use PHPUnit\Framework\TestCase;
 

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Shared;
+namespace App\Shared\Exception;
 
 final class InvalidValueException extends AbstractDomainException
 {
