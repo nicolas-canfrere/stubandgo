@@ -19,7 +19,7 @@ services:
     App\:
         resource: '../src/'
 
-    # Catalog.Application cannot depend on Messenger: handlers are registered here, not with #[AsMessageHandler].
+    # Catalog.Application and Sales.Application cannot depend on Messenger: handlers are registered here, not with #[AsMessageHandler].
     App\Catalog\Core\Application\Command\:
         resource: '../src/Catalog/Core/Application/Command/*Handler.php'
         tags:
@@ -30,6 +30,18 @@ services:
             - { name: messenger.message_handler, bus: query.bus }
     App\Catalog\Core\Application\Listener\:
         resource: '../src/Catalog/Core/Application/Listener/'
+        tags:
+            - { name: messenger.message_handler, bus: event.bus }
+    App\Sales\Core\Application\Command\:
+        resource: '../src/Sales/Core/Application/Command/*Handler.php'
+        tags:
+            - { name: messenger.message_handler, bus: command.bus }
+    App\Sales\Core\Application\Query\:
+        resource: '../src/Sales/Core/Application/Query/*Handler.php'
+        tags:
+            - { name: messenger.message_handler, bus: query.bus }
+    App\Sales\Core\Application\Listener\:
+        resource: '../src/Sales/Core/Application/Listener/'
         tags:
             - { name: messenger.message_handler, bus: event.bus }
 
@@ -65,6 +77,20 @@ when@test:
             public: true
         App\Tests\Catalog\Core\Application\Fixtures\EventPublishedRecorder:
             public: true
+        App\Sales\Core\Domain\SeatStockRepositoryInterface:
+            alias: App\Sales\Infrastructure\DbalSeatStockRepository
+            public: true
+        App\Sales\Core\Domain\OrderRepositoryInterface:
+            alias: App\Sales\Infrastructure\DbalOrderRepository
+            public: true
+        App\Tests\Sales\Fixtures\SalesEventRecorder:
+            public: true
+        App\Tests\Sales\Fixtures\RecordingPaymentGateway:
+            decorates: App\Sales\Infrastructure\SimulatedPaymentGateway
+            arguments: ['@.inner']
+            public: true
+        App\Tests\Support\Console\:
+            resource: '../tests/Support/Console/'
         App\Tests\Shared\Infrastructure\Fixtures\:
             resource: '../tests/Shared/Infrastructure/Fixtures/'
             exclude: '../tests/Shared/Infrastructure/Fixtures/*Exception.php'

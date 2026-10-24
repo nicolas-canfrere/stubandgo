@@ -59,7 +59,7 @@ services:
       context: .
       target: dev
     user: "${UID:-1000}:${GID:-1000}"
-    command: bin/console messenger:consume async scheduler_default -vv
+    command: bin/console messenger:consume async scheduler_default scheduler_sales -vv
     restart: unless-stopped
     volumes:
       - ./:/app

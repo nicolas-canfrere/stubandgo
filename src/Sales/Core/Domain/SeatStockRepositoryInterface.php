@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Sales\Core\Domain;
 
+use App\Sales\Core\Domain\Exception\EventNotOnSaleException;
 use App\Shared\Identity\EventId;
 use App\Shared\ValueObject\Capacity;
 use App\Shared\ValueObject\Quantity;
@@ -26,5 +27,10 @@ interface SeatStockRepositoryInterface
      */
     public function release(EventId $eventId, Quantity $quantity): int;
 
+    /**
+     * @return int the number of seats left
+     *
+     * @throws EventNotOnSaleException when the event has no seat stock
+     */
     public function available(EventId $eventId): int;
 }

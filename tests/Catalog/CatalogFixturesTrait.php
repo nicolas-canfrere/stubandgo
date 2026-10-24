@@ -42,7 +42,7 @@ trait CatalogFixturesTrait
     /**
      * @param list<array{id: string, label: string, priceCents: int}>|null $priceTiers
      */
-    protected function createEvent(string $organizationId, string $startsAt, bool $publish = false, ?array $priceTiers = null, string $title = 'Concert'): string
+    protected function createEvent(string $organizationId, string $startsAt, bool $publish = false, ?array $priceTiers = null, string $title = 'Concert', int $capacity = 100): string
     {
         $id = EventId::generate()->toString();
         $this->command(new CreateEvent(
@@ -52,7 +52,7 @@ trait CatalogFixturesTrait
             'Un super concert',
             'La Cigale',
             $startsAt,
-            100,
+            $capacity,
             $priceTiers ?? [['id' => PriceTierId::generate()->toString(), 'label' => 'Plein', 'priceCents' => 2500]],
         ));
 
