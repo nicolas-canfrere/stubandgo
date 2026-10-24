@@ -13,11 +13,11 @@ final class Version20261024140000CommentOutboxSchema extends AbstractMigration
         'TABLE outbox_message' => 'Transactional outbox: asynchronous messages written in the same transaction as the business change, then published to the message broker by the relay.',
         'COLUMN outbox_message.id' => 'Message identifier (UUID v7, time-ordered); also the tie-breaker when two rows share the same created_at.',
         'COLUMN outbox_message.message_class' => 'Fully qualified class name of the message, used by the relay to rebuild the object from the payload.',
-        'COLUMN outbox_message.payload' => 'Normalised message properties (scalars and arrays only), denormalised into message_class by the relay. Never logged.',
+        'COLUMN outbox_message.payload' => 'Normalised message properties (scalars and arrays only), denormalised into message_class by the relay. By design it is not copied into logs or failure_reason.',
         'COLUMN outbox_message.created_at' => 'When the message was stored; the relay publishes pending rows oldest first.',
-        'COLUMN outbox_message.published_at' => 'When the relay handed the message to the broker; NULL while the message is still waiting to be published.',
+        'COLUMN outbox_message.published_at' => 'When the relay handed the message to the broker. NULL while the message is pending and for quarantined rows (see failed_at); a pending row has both published_at and failed_at NULL.',
         'COLUMN outbox_message.failed_at' => 'When the relay quarantined the message because it could not be rebuilt; NULL for a healthy message. A quarantined row is never retried.',
-        'COLUMN outbox_message.failure_reason' => 'Short explanation (class and error message, no payload) of why the message was quarantined; NULL unless failed_at is set.',
+        'COLUMN outbox_message.failure_reason' => 'Short explanation of why the message was quarantined: by design it contains the message class and the decoding error, not the payload. NULL unless failed_at is set.',
     ];
 
     public function getDescription(): string
