@@ -23,9 +23,18 @@ final class DomainExceptionListener
             return;
         }
 
+        $status = $this->statusCode($exception);
+
         $event->setResponse(new JsonResponse(
-            ['error' => $exception->errorCode(), 'message' => $exception->getMessage()],
-            $this->statusCode($exception),
+            [
+                'type' => '/problems/' . $exception->errorCode(),
+                'title' => Response::$statusTexts[$status],
+                'status' => $status,
+                'detail' => $exception->getMessage(),
+                'instance' => $event->getRequest()->getPathInfo(),
+            ],
+            $status,
+            ['Content-Type' => 'application/problem+json'],
         ));
     }
 
