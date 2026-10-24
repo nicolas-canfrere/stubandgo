@@ -71,12 +71,13 @@ lint: ## Fix coding standards, then run PHPStan
 	$(MAKE) phpstan
 
 openapi: ## Regenerate openapi.yaml from the NelmioApiDocBundle documentation
-	docker compose run --rm -T php bin/console nelmio:apidoc:dump --format=yaml 2>/dev/null > openapi.yaml.tmp || { rm -f openapi.yaml.tmp; echo "The OpenAPI dump failed."; exit 1; }
-	mv openapi.yaml.tmp openapi.yaml
+	@tmp=$$(mktemp); err=$$(mktemp); trap 'rm -f "$$tmp" "$$err"' EXIT; \
+	docker compose run --rm -T --no-deps php bin/console nelmio:apidoc:dump --format=yaml > "$$tmp" 2> "$$err" || { echo "The OpenAPI dump failed:"; cat "$$err"; exit 1; }; \
+	cat "$$tmp" > openapi.yaml
 
 openapi-check: ## Fail if openapi.yaml is not up to date with the code
-	@tmp=$$(mktemp); trap 'rm -f "$$tmp"' EXIT; \
-	docker compose run --rm -T php bin/console nelmio:apidoc:dump --format=yaml 2>/dev/null > "$$tmp" || { echo "The OpenAPI dump failed."; exit 1; }; \
+	@tmp=$$(mktemp); err=$$(mktemp); trap 'rm -f "$$tmp" "$$err"' EXIT; \
+	docker compose run --rm -T --no-deps php bin/console nelmio:apidoc:dump --format=yaml > "$$tmp" 2> "$$err" || { echo "The OpenAPI dump failed:"; cat "$$err"; exit 1; }; \
 	if ! diff -u openapi.yaml "$$tmp"; then echo "openapi.yaml is out of date: run 'make openapi' and commit the result."; exit 1; fi; \
 	echo "openapi.yaml is up to date."
 
