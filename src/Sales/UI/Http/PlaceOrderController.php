@@ -6,7 +6,6 @@ namespace App\Sales\UI\Http;
 
 use App\Sales\Core\Application\Command\PlaceOrder;
 use App\Sales\Core\Application\Query\GetOrderStatus;
-use App\Sales\Core\Application\Query\OrderStatusView;
 use App\Shared\Bus\CommandBusInterface;
 use App\Shared\Bus\QueryBusInterface;
 use App\Shared\Identity\OrderId;
@@ -81,7 +80,6 @@ final readonly class PlaceOrderController
             ),
         ));
 
-        /** @var OrderStatusView $order */
         $order = $this->queryBus->ask(new GetOrderStatus($orderId));
 
         return new JsonResponse(

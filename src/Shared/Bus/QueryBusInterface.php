@@ -6,5 +6,12 @@ namespace App\Shared\Bus;
 
 interface QueryBusInterface
 {
-    public function ask(object $query): mixed;
+    /**
+     * @template TResult
+     *
+     * @param QueryInterface<TResult> $query
+     *
+     * @return TResult
+     */
+    public function ask(QueryInterface $query): mixed;
 }

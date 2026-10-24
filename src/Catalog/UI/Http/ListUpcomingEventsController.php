@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Catalog\UI\Http;
 
-use App\Catalog\Core\Application\Query\EventSummaryView;
 use App\Catalog\Core\Application\Query\ListUpcomingEvents;
 use App\Shared\Bus\QueryBusInterface;
 use OpenApi\Attributes as OA;
@@ -31,7 +30,6 @@ final readonly class ListUpcomingEventsController
     )]
     public function __invoke(): JsonResponse
     {
-        /** @var list<EventSummaryView> $events */
         $events = $this->queryBus->ask(new ListUpcomingEvents());
 
         return new JsonResponse(array_map(CatalogJson::summary(...), $events));

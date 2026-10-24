@@ -443,7 +443,6 @@ final class SalesUseCasesTest extends AbstractSalesTestCase
     private function orderStatus(string $orderId): OrderStatusView
     {
         $view = $this->ask(new GetOrderStatus($orderId));
-        self::assertInstanceOf(OrderStatusView::class, $view);
 
         return $view;
     }
@@ -451,7 +450,6 @@ final class SalesUseCasesTest extends AbstractSalesTestCase
     private function remaining(string $eventId): int
     {
         $view = $this->ask(new GetEventAvailability($eventId));
-        self::assertInstanceOf(EventAvailabilityView::class, $view);
         self::assertSame($eventId, $view->eventId);
 
         return $view->remaining;

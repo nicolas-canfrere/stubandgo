@@ -72,6 +72,9 @@ abstract classes prefixed `Abstract`; no `Class`/`Enum` suffix.
   aggregate. Commands and queries carry only `string`, `int`, `bool`,
   `float` and `array`; handlers rebuild value objects on entry. Queries
   return read DTOs defined in `Core/Application`.
+- Queries implement `App\Shared\Bus\QueryInterface` with
+  `@implements QueryInterface<ResultType>`, so `QueryBusInterface::ask()`
+  returns a typed result (no `@var` at call sites).
 - Never open a transaction by hand in a handler.
 
 ### Asynchronous messages

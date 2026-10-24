@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Catalog\UI\Http;
 
-use App\Catalog\Core\Application\Query\EventDetailView;
 use App\Catalog\Core\Application\Query\GetEventDetail;
 use App\Catalog\Core\Application\Query\PriceTierView;
 use App\Shared\Bus\QueryBusInterface;
@@ -39,7 +38,6 @@ final readonly class GetEventDetailController
     )]
     public function __invoke(string $eventId): JsonResponse
     {
-        /** @var EventDetailView $event */
         $event = $this->queryBus->ask(new GetEventDetail($eventId));
 
         return new JsonResponse([

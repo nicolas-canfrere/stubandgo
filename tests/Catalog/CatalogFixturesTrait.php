@@ -9,6 +9,7 @@ use App\Catalog\Core\Application\Command\CreateOrganization;
 use App\Catalog\Core\Application\Command\PublishEvent;
 use App\Shared\Bus\CommandBusInterface;
 use App\Shared\Bus\QueryBusInterface;
+use App\Shared\Bus\QueryInterface;
 use App\Shared\Identity\EventId;
 use App\Shared\Identity\OrganizationId;
 use App\Shared\Identity\PriceTierId;
@@ -22,7 +23,14 @@ trait CatalogFixturesTrait
         self::getContainer()->get(CommandBusInterface::class)->dispatch($command);
     }
 
-    protected function ask(object $query): mixed
+    /**
+     * @template TResult
+     *
+     * @param QueryInterface<TResult> $query
+     *
+     * @return TResult
+     */
+    protected function ask(QueryInterface $query): mixed
     {
         return self::getContainer()->get(QueryBusInterface::class)->ask($query);
     }

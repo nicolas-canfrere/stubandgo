@@ -7,7 +7,6 @@ namespace App\Tests\Catalog\Core\Application;
 use App\Catalog\Core\Application\Command\CreateEvent;
 use App\Catalog\Core\Application\Command\CreateOrganization;
 use App\Catalog\Core\Application\Command\PublishEvent;
-use App\Catalog\Core\Application\Query\EventDetailView;
 use App\Catalog\Core\Application\Query\EventSummaryView;
 use App\Catalog\Core\Application\Query\GetEventDetail;
 use App\Catalog\Core\Application\Query\GetOrganizationCatalog;
@@ -152,7 +151,6 @@ final class CatalogUseCasesTest extends AbstractCatalogTestCase
 
         $detail = $this->ask(new GetEventDetail($eventId));
 
-        self::assertInstanceOf(EventDetailView::class, $detail);
         self::assertSame($eventId, $detail->eventId);
         self::assertSame($organization['id'], $detail->organizationId);
         self::assertSame($organization['slug'], $detail->organizationSlug);
@@ -231,7 +229,6 @@ final class CatalogUseCasesTest extends AbstractCatalogTestCase
 
         $detail = $this->ask(new GetEventDetail($eventId));
 
-        self::assertInstanceOf(EventDetailView::class, $detail);
         self::assertEquals(new \DateTimeImmutable('2026-12-01T20:00:00+00:00'), $detail->startsAt);
     }
 
@@ -257,10 +254,9 @@ final class CatalogUseCasesTest extends AbstractCatalogTestCase
     private function listUpcoming(): array
     {
         $views = $this->ask(new ListUpcomingEvents());
-        self::assertIsArray($views);
         self::assertContainsOnlyInstancesOf(EventSummaryView::class, $views);
 
-        return array_values($views);
+        return $views;
     }
 
     /**
@@ -279,7 +275,6 @@ final class CatalogUseCasesTest extends AbstractCatalogTestCase
     private function catalogOf(string $slug): OrganizationCatalogView
     {
         $catalog = $this->ask(new GetOrganizationCatalog($slug));
-        self::assertInstanceOf(OrganizationCatalogView::class, $catalog);
 
         return $catalog;
     }

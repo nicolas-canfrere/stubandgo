@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Shared\Infrastructure\Bus;
 
 use App\Shared\Bus\QueryBusInterface;
+use App\Shared\Bus\QueryInterface;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Stamp\HandledStamp;
@@ -17,7 +18,7 @@ final readonly class MessengerQueryBus implements QueryBusInterface
     {
     }
 
-    public function ask(object $query): mixed
+    public function ask(QueryInterface $query): mixed
     {
         $stamps = $this->dispatchUnwrapped($this->bus, $query)->all(HandledStamp::class);
 

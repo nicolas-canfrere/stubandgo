@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Sales\UI\Http;
 
-use App\Sales\Core\Application\Query\EventAvailabilityView;
 use App\Sales\Core\Application\Query\GetEventAvailability;
 use App\Shared\Bus\QueryBusInterface;
 use OpenApi\Attributes as OA;
@@ -43,7 +42,6 @@ final readonly class GetEventAvailabilityController
     )]
     public function __invoke(string $eventId): JsonResponse
     {
-        /** @var EventAvailabilityView $availability */
         $availability = $this->queryBus->ask(new GetEventAvailability($eventId));
 
         return new JsonResponse(['eventId' => $availability->eventId, 'remaining' => $availability->remaining]);

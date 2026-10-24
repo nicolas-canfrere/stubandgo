@@ -6,7 +6,6 @@ namespace App\Tests\Sales\Concurrency;
 
 use App\Sales\Core\Application\Command\PlaceOrder;
 use App\Sales\Core\Application\Query\GetOrderStatus;
-use App\Sales\Core\Application\Query\OrderStatusView;
 use App\Shared\Identity\OrderId;
 use App\Tests\Support\ParallelRunner;
 use PHPUnit\Framework\Attributes\Group;
@@ -65,7 +64,6 @@ final class PayExpireConcurrencyTest extends AbstractSalesConcurrencyTestCase
     private function statusOf(string $orderId): string
     {
         $view = $this->ask(new GetOrderStatus($orderId));
-        self::assertInstanceOf(OrderStatusView::class, $view);
 
         return $view->status;
     }

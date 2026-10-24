@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Tests\Sales\Infrastructure\Scheduler;
 
 use App\Sales\Core\Application\Query\GetOrderStatus;
-use App\Sales\Core\Application\Query\OrderStatusView;
 use App\Sales\Core\Domain\OrderRepositoryInterface;
 use App\Sales\Infrastructure\Scheduler\ExpireOverdueOrders;
 use App\Sales\Infrastructure\Scheduler\ExpireOverdueOrdersHandler;
@@ -74,7 +73,6 @@ final class ExpireOverdueOrdersHandlerTest extends AbstractSalesTestCase
     private function statusOf(string $orderId): string
     {
         $view = $this->ask(new GetOrderStatus($orderId));
-        self::assertInstanceOf(OrderStatusView::class, $view);
 
         return $view->status;
     }

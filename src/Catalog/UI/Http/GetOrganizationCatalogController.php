@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Catalog\UI\Http;
 
 use App\Catalog\Core\Application\Query\GetOrganizationCatalog;
-use App\Catalog\Core\Application\Query\OrganizationCatalogView;
 use App\Shared\Bus\QueryBusInterface;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -33,7 +32,6 @@ final readonly class GetOrganizationCatalogController
     )]
     public function __invoke(string $slug): JsonResponse
     {
-        /** @var OrganizationCatalogView $catalog */
         $catalog = $this->queryBus->ask(new GetOrganizationCatalog($slug));
 
         return new JsonResponse([

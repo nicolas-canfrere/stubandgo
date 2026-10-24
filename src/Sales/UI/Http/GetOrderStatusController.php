@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Sales\UI\Http;
 
 use App\Sales\Core\Application\Query\GetOrderStatus;
-use App\Sales\Core\Application\Query\OrderStatusView;
 use App\Shared\Bus\QueryBusInterface;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -58,7 +57,6 @@ final readonly class GetOrderStatusController
     )]
     public function __invoke(string $orderId): JsonResponse
     {
-        /** @var OrderStatusView $order */
         $order = $this->queryBus->ask(new GetOrderStatus($orderId));
 
         return new JsonResponse([

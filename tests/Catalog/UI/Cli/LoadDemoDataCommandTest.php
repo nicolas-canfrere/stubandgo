@@ -85,7 +85,6 @@ final class LoadDemoDataCommandTest extends KernelTestCase
     private function catalog(string $slug): OrganizationCatalogView
     {
         $catalog = $this->ask(new GetOrganizationCatalog($slug));
-        self::assertInstanceOf(OrganizationCatalogView::class, $catalog);
 
         return $catalog;
     }
@@ -93,7 +92,6 @@ final class LoadDemoDataCommandTest extends KernelTestCase
     private function detail(string $eventId): EventDetailView
     {
         $detail = $this->ask(new GetEventDetail($eventId));
-        self::assertInstanceOf(EventDetailView::class, $detail);
 
         return $detail;
     }

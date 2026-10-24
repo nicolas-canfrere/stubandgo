@@ -72,7 +72,6 @@ final readonly class PayOrderController
     {
         $this->commandBus->dispatch(new PayOrder($orderId, $payment->cardNumber));
 
-        /** @var OrderStatusView $order */
         $order = $this->queryBus->ask(new GetOrderStatus($orderId));
 
         return match ($order->status) {
