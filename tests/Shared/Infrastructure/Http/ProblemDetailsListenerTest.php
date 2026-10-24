@@ -13,6 +13,9 @@ use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Symfony\Component\HttpKernel\KernelInterface;
+use Symfony\Component\Validator\ConstraintViolation;
+use Symfony\Component\Validator\ConstraintViolationList;
+use Symfony\Component\Validator\Exception\ValidationFailedException;
 
 final class ProblemDetailsListenerTest extends WebTestCase
 {
@@ -131,6 +134,63 @@ final class ProblemDetailsListenerTest extends WebTestCase
             'detail' => 'Odd.',
             'instance' => '/some/path',
         ], json_decode((string) $response->getContent(), true));
+    }
+
+    public function testPayloadValidationFailureIsRenderedWithViolations(): void
+    {
+        $violations = new ConstraintViolationList([
+            new ConstraintViolation('This value should not be blank.', null, [], null, 'buyerEmail', ''),
+            new ConstraintViolation(new class implements \Stringable {
+                public function __toString(): string
+                {
+                    return 'This value should be of type int.';
+                }
+            }, null, [], null, 'lines[0].quantity', 'two'),
+        ]);
+        $exception = new HttpException(422, 'Unprocessable Content', new ValidationFailedException(null, $violations));
+
+        $response = $this->render($exception);
+
+        self::assertSame(422, $response->getStatusCode());
+        self::assertSame('application/problem+json', $response->headers->get('Content-Type'));
+        self::assertSame([
+            'type' => '/problems/validation_failed',
+            'title' => 'Unprocessable Content',
+            'status' => 422,
+            'detail' => 'The request payload is invalid.',
+            'instance' => '/some/path',
+            'violations' => [
+                ['propertyPath' => 'buyerEmail', 'message' => 'This value should not be blank.'],
+                ['propertyPath' => 'lines[0].quantity', 'message' => 'This value should be of type int.'],
+            ],
+        ], json_decode((string) $response->getContent(), true));
+    }
+
+    public function testUnprocessableHttpExceptionWithoutValidationFailureStaysGeneric(): void
+    {
+        $response = $this->render(new HttpException(422, 'Nope.', new \RuntimeException('other')));
+
+        self::assertSame(422, $response->getStatusCode());
+        self::assertSame([
+            'type' => '/problems/unprocessable_content',
+            'title' => 'Unprocessable Content',
+            'status' => 422,
+            'detail' => 'Nope.',
+            'instance' => '/some/path',
+        ], json_decode((string) $response->getContent(), true));
+    }
+
+    public function testValidationFailureWithAnotherStatusStaysGeneric(): void
+    {
+        $exception = new HttpException(400, 'Bad.', new ValidationFailedException(null, new ConstraintViolationList()));
+
+        $response = $this->render($exception);
+
+        self::assertSame(400, $response->getStatusCode());
+        $problem = json_decode((string) $response->getContent(), true);
+        self::assertIsArray($problem);
+        self::assertSame('/problems/bad_request', $problem['type']);
+        self::assertArrayNotHasKey('violations', $problem);
     }
 
     private function render(\Throwable $exception): Response

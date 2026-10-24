@@ -1,8 +1,8 @@
 nelmio_api_doc:
     documentation:
         info:
-            title: stubandgo public catalog API
-            description: Read-only catalog of organizations and published events. Errors follow RFC 9457 Problem Details.
+            title: stubandgo public API
+            description: Catalog of organizations and published events, order placement and simulated payment. Errors follow RFC 9457 Problem Details.
             version: 1.0.0
         components:
             schemas:

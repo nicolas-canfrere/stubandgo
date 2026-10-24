@@ -178,7 +178,9 @@ final class CatalogApiTest extends WebTestCase
         self::assertResponseIsSuccessful();
         self::assertIsArray($doc);
         self::assertIsArray($doc['paths']);
-        self::assertEqualsCanonicalizing(['/api/events', '/api/events/{eventId}', '/api/organizations/{slug}'], array_keys($doc['paths']));
+        foreach (['/api/events', '/api/events/{eventId}', '/api/organizations/{slug}'] as $path) {
+            self::assertArrayHasKey($path, $doc['paths']);
+        }
         foreach (['/api/events/{eventId}', '/api/organizations/{slug}'] as $path) {
             self::assertIsArray($doc['paths'][$path]);
             self::assertIsArray($doc['paths'][$path]['get']);
