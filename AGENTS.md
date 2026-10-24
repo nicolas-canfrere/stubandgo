@@ -48,7 +48,30 @@ one because the change looks small.
 
 ## Code style
 
+PHP CS Fixer enforces the style, configured in `.php-cs-fixer.dist.php`:
+`@Symfony` and `@Symfony:risky`, plus the `@autoPHPMigration` and
+`@autoPHPUnitMigration` sets, which follow the PHP and PHPUnit versions in
+`composer.json`. Run `make cs-fix` rather than formatting by hand, and
+`make cs-check` to verify without modifying files. Rules worth knowing because
+they shape what you write:
 
+- `declare(strict_types=1);` at the top of every PHP file.
+- `ordered_class_elements`: constants, properties, constructor, then methods, in
+  the order the fixer imposes.
+- `no_superfluous_phpdoc_tags`: no `@param`/`@return` that only repeats a native
+  type, no `{@inheritdoc}`. Write PHPDoc only when it adds information, e.g.
+  generics or array shapes for PHPStan.
+- `phpdoc_to_property_type`: declare property types natively, not in `@var`.
+- `concat_space`: one space around `.`.
+- `php_unit_method_casing` is off: test method casing is not enforced.
+
+PHPStan runs at `level: max` on `src/` and `tests/` with the Symfony and
+PHPUnit extensions (`phpstan.dist.neon`). Run `make phpstan`; fix errors with
+precise types, never with `@phpstan-ignore` or a baseline. `make lint` runs
+`cs-fix` then `phpstan`.
+
+`.editorconfig`: UTF-8, LF, 4-space indentation, final newline, trimmed
+trailing whitespace; 2 spaces in `compose*.yaml`.
 
 ## Discover, don't guess
 
