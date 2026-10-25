@@ -1,0 +1,138 @@
+# stubandgo
+
+API de billetterie en ligne : des organisations publient des événements datés avec plusieurs tarifs et une jauge, un acheteur sans compte commande, paie (paiement simulé) et reçoit ses billets par email avec un QR code ; le scan du QR code à l'entrée « grille » le billet.
+
+Cette étape (L1) livre l'API complète du parcours « vendre et contrôler », sans authentification. Symfony 8.1, PHP 8.4, PostgreSQL (DBAL, sans ORM), RabbitMQ (Messenger), Mailpit.
+
+## Prérequis
+
+Docker avec Docker Compose et `make`. PHP et Composer ne sont pas nécessaires sur la machine : tout passe par des conteneurs.
+
+```bash
+make install   # dépendances PHP (Composer dans un conteneur)
+```
+
+## Démarrage
+
+```bash
+make up                                                          # nginx, php, PostgreSQL, RabbitMQ, Mailpit, worker
+docker compose exec php bin/console doctrine:migrations:migrate -n
+docker compose exec php bin/console app:demo:load                # 2 organisations, 3 événements (tarifs Plein / Réduit / Gratuit)
+```
+
+Pour préparer la base de test : `make test-db`.
+
+| Service | URL |
+|---|---|
+| API | http://localhost:8080 |
+| Documentation OpenAPI | http://localhost:8080/api/doc (document committé : `openapi.yaml`) |
+| Santé | http://localhost:8080/health |
+| Métriques (format Prometheus) | http://localhost:8080/metrics |
+| Mailpit (emails reçus) | http://localhost:8025 |
+| RabbitMQ (guest / guest) | http://localhost:15672 |
+
+`/health` répond 200 quand la base, la file d'attente, l'outbox et le worker sont sains (le worker doit avoir battu au moins une fois, ce qui prend quelques secondes après `make up`).
+
+## Parcours de démonstration
+
+Les commandes ci-dessous utilisent `curl` et `jq`.
+
+```bash
+A=localhost:8080
+E=$(curl -s $A/api/events | jq -r '.[0].id')                     # Soirée Rock
+D=$(curl -s $A/api/events/$E)
+PLEIN=$(echo "$D" | jq -r '.priceTiers[] | select(.label=="Plein").id')
+REDUIT=$(echo "$D" | jq -r '.priceTiers[] | select(.label=="Réduit").id')
+BODY=$(jq -nc --arg e $E --arg p $PLEIN --arg r $REDUIT \
+  '{eventId:$e, buyerEmail:"alice@example.com", lines:[{priceTierId:$p,quantity:1},{priceTierId:$r,quantity:1}]}')
+
+curl -s $A/api/events/$E/availability                            # {"eventId":"…","remaining":200}
+
+# 1. Une commande, puis un paiement refusé : les places sont libérées (402)
+O1=$(curl -s -X POST $A/api/orders -H 'Content-Type: application/json' -d "$BODY" | jq -r .id)
+curl -s -X POST $A/api/orders/$O1/payment -H 'Content-Type: application/json' -d '{"cardNumber":"4000000000000002"}'
+curl -s $A/api/events/$E/availability                            # remaining restauré à 200
+
+# 2. Une nouvelle commande, payée avec la carte acceptée (200, "paid")
+O2=$(curl -s -X POST $A/api/orders -H 'Content-Type: application/json' -d "$BODY" | jq -r .id)
+curl -s -X POST $A/api/orders/$O2/payment -H 'Content-Type: application/json' -d '{"cardNumber":"4242424242424242"}'
+curl -s $A/api/orders/$O2                                        # état de la commande
+
+# 3. L'email part en asynchrone (outbox, relais, RabbitMQ, worker) : quelques secondes plus tard
+curl -s http://localhost:8025/api/v1/messages | jq '.messages[] | {Subject, To: [.To[].Address]}'
+```
+
+L'email contient un QR code par billet (images `ticket-1.png`, `ticket-2.png`). Le QR code encode le jeton du billet ; pour le démontrer sans lecteur de QR code, on le lit en base, puis on le scanne deux fois :
+
+```bash
+TOKEN=$(docker compose exec -T database psql -U app -d app -At -c \
+  "SELECT a.token FROM admission_right a JOIN ticket t ON t.id = a.ticket_id WHERE t.order_id = '$O2' ORDER BY t.id LIMIT 1")
+curl -s -X POST $A/api/events/$E/scans -H 'Content-Type: application/json' -d "{\"token\":\"$TOKEN\"}"
+# {"outcome":"valid","firstUsedAt":null}
+curl -s -X POST $A/api/events/$E/scans -H 'Content-Type: application/json' -d "{\"token\":\"$TOKEN\"}"
+# {"outcome":"already_used","firstUsedAt":"2026-…Z"}
+```
+
+Cartes de test : `4242424242424242` (acceptée), `4000000000000002` (refusée). Un événement de démonstration, « Concert Intimiste », n'a que 2 places : pratique pour provoquer un `409 sold_out`.
+
+Les erreurs HTTP suivent la RFC 9457 (`application/problem+json`), les dates de l'API sont en UTC (suffixe `Z`).
+
+## Suivre une commande dans les logs
+
+Les logs sont du JSON sur stderr (Monolog), et chaque ligne porte `extra.trace_id`. Chaque réponse HTTP renvoie un en-tête `traceparent` (format W3C) ; un `traceparent` entrant est repris. L'identifiant de trace traverse l'outbox, le relais et RabbitMQ : le worker qui envoie l'email logue le même `trace_id` que la requête de paiement.
+
+```bash
+curl -si -X POST $A/api/orders/$O2/payment -H 'Content-Type: application/json' -d '{"cardNumber":"4242424242424242"}' | grep -i '^traceparent'
+# traceparent: 00-<trace_id>-<span_id>-01
+docker compose logs php worker | grep <trace_id>
+```
+
+On y retrouve, dans l'ordre, la requête (`php`), la commande `PayOrder`, l'événement `OrderPaid`, puis l'envoi des billets (`worker`). Le numéro de carte n'apparaît jamais dans les logs.
+
+## Architecture
+
+- Trois contextes, chacun un hexagone (`src/<Contexte>/Core`, `Infrastructure`, `UI`) : `Catalog` (organisations, événements, tarifs), `Sales` (commandes, places, paiement simulé), `Access` (billets, QR codes, scan). `src/Shared` est le noyau partagé. Les dépendances sont vérifiées par Deptrac.
+- Quatre bus Messenger : `command.bus` (une transaction DBAL par commande), `query.bus`, `event.bus` (événements de domaine synchrones) et `async.bus`.
+- Les messages asynchrones passent par une outbox transactionnelle : voir [docs/outbox.md](docs/outbox.md).
+- Règles de projet détaillées (conventions, feature workflow) : `AGENTS.md`.
+
+## Commandes `make`
+
+| Cible | Rôle |
+|---|---|
+| `make up` / `make down` | démarrer / arrêter la stack de développement |
+| `make console CMD="debug:router"` | lancer une commande Symfony |
+| `make test-db` | créer la base de test et la migrer |
+| `make test` | suite PHPUnit |
+| `make crap` | couverture et CRAP (échec si une méthode atteint 9) |
+| `make mutation` | mutation testing (Infection, 100 % MSI exigé) |
+| `make phpstan` | analyse statique (niveau max) |
+| `make cs-check` / `make cs-fix` | style de code |
+| `make deptrac` | règles de dépendances entre couches |
+| `make openapi` / `make openapi-check` / `make openapi-lint` | régénérer, vérifier, linter `openapi.yaml` |
+| `make ci` | tous les contrôles |
+
+`make help` liste toutes les cibles.
+
+## Limites de L1
+
+- **L'API de scan n'est pas protégée** : n'importe quel client peut scanner un jeton. C'est une limite assumée, levée en L2 avec l'authentification (Keycloak).
+- Pas d'authentification ni d'isolation entre organisations : les organisations et événements sont créés par `app:demo:load`, il n'y a pas de back-office (prévu en L3).
+- Le paiement est simulé et aucun prestataire réel n'est appelé.
+
+## Non-objectifs et évolutions possibles
+
+Exclus de L1 à L3, ils pourraient venir ensuite :
+
+- billets valables plusieurs jours ou pour plusieurs événements ;
+- plan de salle et placement numéroté ;
+- remboursement, annulation de commande, revente ;
+- modification ou annulation d'un événement ayant déjà vendu un billet ;
+- abonnement des organisations, modèle hybride, frais de service payés par l'acheteur ;
+- quotas par tarif, justificatif de tarif réduit vérifié ;
+- vrai prestataire de paiement et reversement réel aux organisations ;
+- compte acheteur et historique des billets ;
+- appartenance d'une même personne à plusieurs organisations ;
+- mode hors connexion pour le scan ;
+- très forts pics de trafic (file d'attente virtuelle) ;
+- recherche et filtres dans les listes d'événements.
