@@ -1,0 +1,56 @@
+# The API keeps no session: each request is authenticated by the Keycloak access token it presents, if any.
+# Routes stay anonymous unless they ask for a user (#[IsGranted]); a presented token is always validated, and an
+# invalid one answers 401 even on a public route.
+security:
+    providers:
+        keycloak_members:
+            id: App\Shared\Infrastructure\Security\AuthenticatedMemberProvider
+
+    firewalls:
+        api:
+            pattern: ^/api
+            stateless: true
+            provider: keycloak_members
+            entry_point: App\Shared\Infrastructure\Security\BearerTokenChallenge
+            access_token:
+                failure_handler: App\Shared\Infrastructure\Security\BearerTokenChallenge
+                token_handler:
+                    # The signing keys come from the discovery (dev, prod) or from a static key set (test), below.
+                    oidc:
+                        claim: sub
+                        audience: stubandgo-api
+                        algorithms: [RS256]
+                        issuers:
+                            - '%app.keycloak.organizations_issuer%'
+                            - '%app.keycloak.platform_issuer%'
+
+# Keys are fetched from Keycloak (and cached) on the first token, never while the container is built.
+when@dev: &keycloak_discovery
+    security:
+        firewalls:
+            api:
+                access_token:
+                    token_handler:
+                        oidc:
+                            discovery:
+                                base_uri:
+                                    - '%env(KEYCLOAK_INTERNAL_URL)%/realms/stubandgo/'
+                                    - '%env(KEYCLOAK_INTERNAL_URL)%/realms/stubandgo-staff/'
+                                cache:
+                                    id: cache.app
+
+when@prod: *keycloak_discovery
+
+# Tests never reach Keycloak: they trust the public half of the test-only keys of tests/Support/Security, whose
+# private half TestTokenIssuer signs with.
+when@test:
+    parameters:
+        env(TEST_OIDC_KEYSET_FILE): '%kernel.project_dir%/tests/Support/Security/jwks.json'
+
+    security:
+        firewalls:
+            api:
+                access_token:
+                    token_handler:
+                        oidc:
+                            keyset: '%env(file:resolve:TEST_OIDC_KEYSET_FILE)%'

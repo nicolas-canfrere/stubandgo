@@ -8,6 +8,9 @@
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
     app.mailer_sender: '%env(MAILER_SENDER)%'
+    # Issuers announced in the access tokens of each Keycloak realm (organizations, platform staff).
+    app.keycloak.organizations_issuer: '%env(KEYCLOAK_PUBLIC_URL)%/realms/stubandgo'
+    app.keycloak.platform_issuer: '%env(KEYCLOAK_PUBLIC_URL)%/realms/stubandgo-staff'
 
 services:
     # default configuration for services in *this* file

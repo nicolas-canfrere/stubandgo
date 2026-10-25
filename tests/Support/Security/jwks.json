@@ -1,0 +1,20 @@
+{
+    "keys": [
+        {
+            "kty": "RSA",
+            "n": "rNdaffLWER8-wjg0tizPml31PzuHKLByrBDpJCDENBt5G7kPcSqrj1ufdbnOhW-NUm3ZGyxZCEqTvHd7zHmxsbsZ-08dRmB_tsXm_akcJ7k-j9FOWT5zrpMg8H2VM1Udpt-tvX1c0SBYy59wnVbWpvSZMIWTF6PunRIuaWHPfnWesirMUCR7weerWufsWFHVii9StxmzccXMXhuW2xF1QzU6kr-Nv7Kn-zRHpNlikonDnQZWH6Vw3gnpDxM-3LVc0Yv-1XJb20h91DIh4t1UEmRjxrJ-KVNnyBE6YvkTjP6sv9QQkEg4y3dk7T5W8rkDCosW_dT5g1QSY2H-NngdaQ",
+            "e": "AQAB",
+            "kid": "test-encryption",
+            "use": "enc",
+            "alg": "RSA-OAEP"
+        },
+        {
+            "kty": "RSA",
+            "n": "q_4uT3sIYyr5G4UTW4C3nXQPWYWVSBHfranLCmXVwivwectxb0rUHbvaAiSzOAjAaft0NSru_WHxbBqNqy4tW4FPUbj5g77ndd9QdW_uTqudRddRM70KFGZM7i2SmcYeK08J2OPscu9HOrtD3xJ7uwtdG5eAcP0jVILs05uVBWsSy1Uhr002T5EUGkYBR6J12040-VFFNRpIk-4hdn0kNWXUEssvdJMpmDX5rQnH-tjilJMVJ_KZ6c8L6UTXWkh5bxbOHrBcQDxutypmeessA_0FRpdgd7OpwCbLOXSILX05Lo1yhZJBTrNLdDukrRMKE_AbhK6jIUIVxANg4J2Pew",
+            "e": "AQAB",
+            "kid": "test-signing",
+            "use": "sig",
+            "alg": "RS256"
+        }
+    ]
+}

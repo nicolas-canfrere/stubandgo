@@ -23,6 +23,8 @@ framework:
             log_level: warning
         Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException:
             log_level: warning
+        Symfony\Component\HttpKernel\Exception\UnauthorizedHttpException:
+            log_level: warning
 
 when@test:
     framework:
