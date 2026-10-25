@@ -22,6 +22,17 @@ docker compose exec php bin/console app:demo:load                # 2 organisatio
 
 Pour préparer la base de test : `make test-db`.
 
+`app:demo:load` ne charge les données qu'une fois et date les événements de 31 à 60 jours après le chargement : au bout d'un mois, ils sont passés et disparaissent des listes. Pour repartir de données neuves, recréer la base (le worker est arrêté pendant ce temps, car PostgreSQL refuse de supprimer une base encore utilisée) :
+
+```bash
+docker compose stop worker
+docker compose exec php bin/console doctrine:database:drop --force
+docker compose exec php bin/console doctrine:database:create
+docker compose exec php bin/console doctrine:migrations:migrate -n
+docker compose exec php bin/console app:demo:load
+docker compose start worker
+```
+
 | Service | URL |
 |---|---|
 | API | http://localhost:8080 |
