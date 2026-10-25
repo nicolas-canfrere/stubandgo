@@ -93,7 +93,9 @@ services:
     ports:
       - "8180:8080"
     volumes:
+      - keycloak_data:/opt/keycloak/data
       - ./docker/keycloak:/opt/keycloak/data/import:ro
 
 volumes:
   database_data:
+  keycloak_data:

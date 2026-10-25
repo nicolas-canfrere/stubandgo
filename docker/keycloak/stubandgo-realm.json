@@ -9,6 +9,15 @@
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": false,
   "editUsernameAllowed": false,
+  "smtpServer": {
+    "host": "mailer",
+    "port": "1025",
+    "from": "no-reply@stubandgo.test",
+    "fromDisplayName": "stubandgo",
+    "auth": "false",
+    "ssl": "false",
+    "starttls": "false"
+  },
   "roles": {
     "realm": [
       {
@@ -61,6 +70,18 @@
     }
   ],
   "users": [
+    {
+      "username": "service-account-stubandgo-admin-api",
+      "enabled": true,
+      "serviceAccountClientId": "stubandgo-admin-api",
+      "clientRoles": {
+        "realm-management": [
+          "manage-organizations",
+          "manage-users",
+          "view-realm"
+        ]
+      }
+    },
     {
       "username": "controleur.rock",
       "email": "controleur.rock@stubandgo.test",
@@ -316,6 +337,24 @@
     "organization"
   ],
   "clients": [
+    {
+      "clientId": "stubandgo-admin-api",
+      "name": "stubandgo API (service account)",
+      "description": "Demo secret, never reuse outside the dev stack.",
+      "enabled": true,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "clientAuthenticatorType": "client-secret",
+      "secret": "stubandgo-admin-api-demo-secret",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "defaultClientScopes": [
+        "basic"
+      ],
+      "optionalClientScopes": []
+    },
     {
       "clientId": "stubandgo-app",
       "name": "stubandgo front",

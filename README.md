@@ -138,7 +138,7 @@ Avec RabbitMQ, `messenger:failed:show` donne seulement le nombre de messages (le
 
 ## Keycloak
 
-Le service `keycloak` (`quay.io/keycloak/keycloak:26.8.1`, mode `start-dev`) démarre avec `make up`. Il n'a pas de volume : à chaque création du conteneur, il réimporte les realms versionnés dans `docker/keycloak/`, l'état de démo est donc toujours celui des fichiers (`docker compose up -d --force-recreate keycloak` pour repartir de l'export). Le service `php` n'en dépend pas, la suite de tests ne le contacte jamais.
+Le service `keycloak` (`quay.io/keycloak/keycloak:26.8.1`, mode `start-dev`) démarre avec `make up`. Sa base (H2 de `start-dev`) vit dans le volume `keycloak_data` : redémarrer ou recréer le conteneur la conserve (les organisations créées via l'API restent), et `--import-realm` ignore un realm déjà présent. Les modifications des fichiers de `docker/keycloak/` ne sont donc prises en compte qu'après `make keycloak-reset` (supprime le conteneur et le volume) puis `make up`, qui réimporte l'état de démo. Le service `php` n'en dépend pas, la suite de tests ne le contacte jamais.
 
 Chaque realm exporté porte sa clé de signature RS256 (composant `rsa-demo-signing`, fournisseur `rsa`, clé privée et certificat dans le JSON). Sans elle, Keycloak tirerait une nouvelle paire de clés à chaque création du conteneur, alors que l'API garde en cache (`cache.app`, jusqu'à une heure) les clés publiques qu'elle a lues : tous les jetons seraient refusés (401) jusqu'à l'expiration du cache. Avec la clé figée, le `kid` annoncé par `/realms/<realm>/protocol/openid-connect/certs` ne change pas d'un conteneur à l'autre. **Ces clés sont du matériel de démonstration, publié dans le dépôt comme les mots de passe : elles ne doivent jamais servir ailleurs.** Les autres clés (chiffrement `RSA-OAEP`, HMAC, AES) restent générées à chaque démarrage.
 
@@ -166,6 +166,7 @@ Les navigateurs parlent à Keycloak par `http://localhost:8180`, l'API par `http
 | `make deptrac` | règles de dépendances entre couches |
 | `make lint-container` | lint du conteneur de production (alias d'autowiring que l'environnement de test redéfinit) |
 | `make openapi` / `make openapi-check` / `make openapi-lint` | régénérer, vérifier, linter `openapi.yaml` |
+| `make keycloak-reset` | supprimer Keycloak et son volume ; le prochain `make up` réimporte les realms de démo |
 | `make keycloak-check` | vérifier que Keycloak annonce l'émetteur public des deux realms (stack démarrée, hors `ci`) |
 | `make ci` | tous les contrôles |
 

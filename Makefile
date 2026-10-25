@@ -8,7 +8,7 @@ COMPOSER = docker run --rm \
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install composer-cli up down console php-sh test crap mutation phpstan cs-check cs-fix lint test-db test-down deptrac lint-container openapi openapi-check openapi-lint keycloak-check ci
+.PHONY: help install composer-cli up down console php-sh test crap mutation phpstan cs-check cs-fix lint test-db test-down deptrac lint-container openapi openapi-check openapi-lint keycloak-check keycloak-reset ci
 
 help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  %-14s %s\n", $$1, $$2}'
@@ -89,5 +89,9 @@ openapi-lint: ## Lint openapi.yaml with Redocly CLI
 
 keycloak-check: ## Fail unless Keycloak announces the public issuer of both realms (stack must be up)
 	docker compose run --rm -T --no-deps php php docker/keycloak-check.php
+
+keycloak-reset: ## Drop Keycloak and its data volume: the next "make up" re-imports the realm exports
+	docker compose rm -sf keycloak
+	docker volume rm -f $$(docker compose config --format json | jq -r '.name')_keycloak_data
 
 ci: cs-check phpstan deptrac lint-container openapi-check openapi-lint test crap mutation ## Run every quality gate
