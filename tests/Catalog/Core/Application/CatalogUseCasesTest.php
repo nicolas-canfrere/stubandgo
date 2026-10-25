@@ -15,6 +15,7 @@ use App\Catalog\Core\Application\Query\OrganizationCatalogView;
 use App\Catalog\Core\Application\Query\PriceTierView;
 use App\Catalog\Core\Domain\Exception\EventAlreadyPublishedException;
 use App\Catalog\Core\Domain\Exception\EventNotFoundException;
+use App\Catalog\Core\Domain\Exception\EventStartInPastException;
 use App\Catalog\Core\Domain\Exception\EventWithoutPriceTierException;
 use App\Catalog\Core\Domain\Exception\OrganizationNameTakenException;
 use App\Catalog\Core\Domain\Exception\OrganizationNotFoundException;
@@ -74,8 +75,10 @@ final class CatalogUseCasesTest extends AbstractCatalogTestCase
     public function testPastEventsAreNotListed(): void
     {
         $organization = $this->createOrganization();
+        self::mockTime(new \DateTimeImmutable('2026-10-01T00:00:00+00:00'));
         $past = $this->createEvent($organization['id'], '2026-10-24T11:59:59+00:00', publish: true);
         $now = $this->createEvent($organization['id'], self::NOW, publish: true);
+        self::mockTime(new \DateTimeImmutable(self::NOW));
         $future = $this->createEvent($organization['id'], '2026-10-24T12:00:01+00:00', publish: true);
 
         self::assertSame([$future], $this->idsOf($this->listUpcoming(), [$past, $now, $future]));
@@ -109,6 +112,43 @@ final class CatalogUseCasesTest extends AbstractCatalogTestCase
         }
     }
 
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function startsNotInTheFuture(): iterable
+    {
+        yield 'now' => [self::NOW];
+        yield 'one second ago' => ['2026-10-24T11:59:59+00:00'];
+    }
+
+    #[DataProvider('startsNotInTheFuture')]
+    public function testCreateEventRefusesAStartThatIsNotInTheFuture(string $startsAt): void
+    {
+        $organization = $this->createOrganization();
+
+        try {
+            $this->createEvent($organization['id'], $startsAt);
+            self::fail('A start that is not in the future must be refused.');
+        } catch (EventStartInPastException) {
+            self::assertSame(0, self::getContainer()->get(Connection::class)->fetchOne('SELECT COUNT(*) FROM event WHERE organization_id = ?', [$organization['id']]));
+        }
+    }
+
+    public function testPublishRefusesAnEventWhoseStartHasPassed(): void
+    {
+        $recorder = self::getContainer()->get(EventPublishedRecorder::class);
+        $eventId = $this->createEvent($this->createOrganization()['id'], '2026-10-24T12:00:01+00:00');
+        self::mockTime(new \DateTimeImmutable('2026-10-24T12:00:01+00:00'));
+
+        try {
+            $this->command(new PublishEvent($eventId));
+            self::fail('An event whose start has passed must not be published.');
+        } catch (EventStartInPastException) {
+            self::assertSame([], $recorder->recorded());
+            self::assertSame('draft', self::getContainer()->get(Connection::class)->fetchOne('SELECT status FROM event WHERE id = ?', [$eventId]));
+        }
+    }
+
     public function testPublishUnknownEventThrowsEventNotFound(): void
     {
         $this->expectException(EventNotFoundException::class);
@@ -121,7 +161,9 @@ final class CatalogUseCasesTest extends AbstractCatalogTestCase
         $organization = $this->createOrganization();
         $other = $this->createOrganization();
         $published = $this->createEvent($organization['id'], '2026-12-01T20:00:00+00:00', publish: true);
+        self::mockTime(new \DateTimeImmutable('2025-12-01T00:00:00+00:00'));
         $this->createEvent($organization['id'], '2026-01-01T20:00:00+00:00', publish: true);
+        self::mockTime(new \DateTimeImmutable(self::NOW));
         $this->createEvent($organization['id'], '2026-12-02T20:00:00+00:00');
         $this->createEvent($other['id'], '2026-12-03T20:00:00+00:00', publish: true);
 

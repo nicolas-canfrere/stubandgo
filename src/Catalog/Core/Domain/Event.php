@@ -5,6 +5,10 @@ declare(strict_types=1);
 namespace App\Catalog\Core\Domain;
 
 use App\Catalog\Core\Domain\Exception\EventAlreadyPublishedException;
+use App\Catalog\Core\Domain\Exception\EventLockedException;
+use App\Catalog\Core\Domain\Exception\EventNotDraftException;
+use App\Catalog\Core\Domain\Exception\EventNotPublishedException;
+use App\Catalog\Core\Domain\Exception\EventStartInPastException;
 use App\Catalog\Core\Domain\Exception\EventWithoutPriceTierException;
 use App\Catalog\Core\Domain\ValueObject\EventDescription;
 use App\Catalog\Core\Domain\ValueObject\EventTitle;
@@ -26,12 +30,12 @@ final class Event
     private function __construct(
         private readonly EventId $id,
         private readonly OrganizationId $organizationId,
-        private readonly EventTitle $title,
-        private readonly EventDescription $description,
-        private readonly Venue $venue,
-        private readonly \DateTimeImmutable $startsAt,
-        private readonly Capacity $capacity,
-        private readonly array $priceTiers,
+        private EventTitle $title,
+        private EventDescription $description,
+        private Venue $venue,
+        private \DateTimeImmutable $startsAt,
+        private Capacity $capacity,
+        private array $priceTiers,
     ) {
     }
 
@@ -47,14 +51,12 @@ final class Event
         \DateTimeImmutable $startsAt,
         Capacity $capacity,
         array $priceTiers,
+        \DateTimeImmutable $now,
     ): self {
-        $ids = array_map(static fn(PriceTier $tier): string => $tier->id()->toString(), $priceTiers);
+        self::assertStartsAfter($id, $startsAt, $now);
+        self::assertDistinctTierIds($priceTiers);
 
-        if (\count(array_unique($ids)) !== \count($ids)) {
-            throw new InvalidValueException('An event cannot have two price tiers with the same identifier.');
-        }
-
-        return new self($id, $organizationId, $title, $description, $venue, $startsAt->setTimezone(new \DateTimeZone('UTC')), $capacity, $priceTiers);
+        return new self($id, $organizationId, $title, $description, $venue, self::utc($startsAt), $capacity, $priceTiers);
     }
 
     /**
@@ -74,14 +76,45 @@ final class Event
         EventStatus $status,
         bool $locked,
     ): self {
-        $event = new self($id, $organizationId, $title, $description, $venue, $startsAt->setTimezone(new \DateTimeZone('UTC')), $capacity, $priceTiers);
+        $event = new self($id, $organizationId, $title, $description, $venue, self::utc($startsAt), $capacity, $priceTiers);
         $event->status = $status;
         $event->locked = $locked;
 
         return $event;
     }
 
-    public function publish(): EventPublished
+    /**
+     * Replaces everything an organizer describes, the price tiers included: only an unlocked draft can be revised.
+     *
+     * @param list<PriceTier> $priceTiers
+     */
+    public function revise(
+        EventTitle $title,
+        EventDescription $description,
+        Venue $venue,
+        \DateTimeImmutable $startsAt,
+        Capacity $capacity,
+        array $priceTiers,
+        \DateTimeImmutable $now,
+    ): void {
+        $this->assertUnlocked();
+
+        if (EventStatus::Draft !== $this->status) {
+            throw EventNotDraftException::withId($this->id);
+        }
+
+        self::assertStartsAfter($this->id, $startsAt, $now);
+        self::assertDistinctTierIds($priceTiers);
+
+        $this->title = $title;
+        $this->description = $description;
+        $this->venue = $venue;
+        $this->startsAt = self::utc($startsAt);
+        $this->capacity = $capacity;
+        $this->priceTiers = $priceTiers;
+    }
+
+    public function publish(\DateTimeImmutable $now): EventPublished
     {
         if (EventStatus::Published === $this->status) {
             throw EventAlreadyPublishedException::withId($this->id);
@@ -91,9 +124,24 @@ final class Event
             throw EventWithoutPriceTierException::withId($this->id);
         }
 
+        self::assertStartsAfter($this->id, $this->startsAt, $now);
         $this->status = EventStatus::Published;
 
         return new EventPublished($this->id, $this->capacity);
+    }
+
+    /**
+     * Takes an event off sale; refused once seats have been taken.
+     */
+    public function unpublish(): void
+    {
+        $this->assertUnlocked();
+
+        if (EventStatus::Published !== $this->status) {
+            throw EventNotPublishedException::withId($this->id);
+        }
+
+        $this->status = EventStatus::Draft;
     }
 
     public function lock(): void
@@ -157,5 +205,36 @@ final class Event
     public function status(): EventStatus
     {
         return $this->status;
+    }
+
+    private function assertUnlocked(): void
+    {
+        if ($this->locked) {
+            throw EventLockedException::withId($this->id);
+        }
+    }
+
+    private static function assertStartsAfter(EventId $id, \DateTimeImmutable $startsAt, \DateTimeImmutable $now): void
+    {
+        if ($startsAt <= $now) {
+            throw EventStartInPastException::withId($id);
+        }
+    }
+
+    /**
+     * @param list<PriceTier> $priceTiers
+     */
+    private static function assertDistinctTierIds(array $priceTiers): void
+    {
+        $ids = array_map(static fn(PriceTier $tier): string => $tier->id()->toString(), $priceTiers);
+
+        if (\count(array_unique($ids)) !== \count($ids)) {
+            throw new InvalidValueException('An event cannot have two price tiers with the same identifier.');
+        }
+    }
+
+    private static function utc(\DateTimeImmutable $date): \DateTimeImmutable
+    {
+        return $date->setTimezone(new \DateTimeZone('UTC'));
     }
 }

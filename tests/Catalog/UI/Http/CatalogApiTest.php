@@ -30,7 +30,9 @@ final class CatalogApiTest extends WebTestCase
         $organization = $this->createOrganization();
         $upcoming = $this->createEvent($organization['id'], '2026-12-01T20:00:00+01:00', publish: true);
         $draft = $this->createEvent($organization['id'], '2026-12-02T20:00:00+01:00');
+        self::mockTime(new \DateTimeImmutable('2025-12-01T00:00:00+00:00'));
         $past = $this->createEvent($organization['id'], '2026-01-01T20:00:00+01:00', publish: true);
+        self::mockTime(new \DateTimeImmutable(self::NOW));
 
         $events = $this->getJson('/api/events');
 

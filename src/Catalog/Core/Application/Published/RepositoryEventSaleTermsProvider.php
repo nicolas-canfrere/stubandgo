@@ -18,9 +18,13 @@ final readonly class RepositoryEventSaleTermsProvider implements EventSaleTermsP
     ) {
     }
 
+    /**
+     * Read by PlaceOrder inside its transaction: the key-share lock taken on the event lasts until the order commits,
+     * so a concurrent unpublication either runs first (and the order sees a draft) or waits and finds the event locked.
+     */
     public function forEvent(string $eventId): ?EventSaleTerms
     {
-        $event = $this->events->find(EventId::fromString($eventId));
+        $event = $this->events->findForSale(EventId::fromString($eventId));
 
         if (null === $event) {
             return null;

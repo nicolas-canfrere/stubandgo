@@ -11,6 +11,10 @@ use App\Shared\ValueObject\Quantity;
 
 interface SeatStockRepositoryInterface
 {
+    /**
+     * Creates the seat stock of an event, or replaces the capacity of an existing one (an event republished after a
+     * revision); the seats taken are kept.
+     */
     public function create(EventId $eventId, Capacity $capacity): void;
 
     /**

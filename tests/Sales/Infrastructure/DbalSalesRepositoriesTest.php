@@ -47,6 +47,18 @@ final class DbalSalesRepositoriesTest extends KernelTestCase
         self::assertSame(5, $this->stocks->available($eventId));
     }
 
+    public function testCreatingAnExistingSeatStockReplacesItsCapacityOnly(): void
+    {
+        $eventId = $this->stock(5);
+        $other = $this->stock(7);
+        $this->stocks->reserve($eventId, Quantity::of(1));
+
+        $this->stocks->create($eventId, Capacity::of(12));
+
+        self::assertSame(11, $this->stocks->available($eventId));
+        self::assertSame(7, $this->stocks->available($other));
+    }
+
     public function testReserveReturnsTheSeatsTakenAfterIt(): void
     {
         $eventId = $this->stock(5);

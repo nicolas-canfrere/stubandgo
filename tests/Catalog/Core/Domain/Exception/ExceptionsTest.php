@@ -5,7 +5,11 @@ declare(strict_types=1);
 namespace App\Tests\Catalog\Core\Domain\Exception;
 
 use App\Catalog\Core\Domain\Exception\EventAlreadyPublishedException;
+use App\Catalog\Core\Domain\Exception\EventLockedException;
+use App\Catalog\Core\Domain\Exception\EventNotDraftException;
 use App\Catalog\Core\Domain\Exception\EventNotFoundException;
+use App\Catalog\Core\Domain\Exception\EventNotPublishedException;
+use App\Catalog\Core\Domain\Exception\EventStartInPastException;
 use App\Catalog\Core\Domain\Exception\EventWithoutPriceTierException;
 use App\Catalog\Core\Domain\Exception\IdentityProviderUnavailableException;
 use App\Catalog\Core\Domain\Exception\MemberAlreadyExistsException;
@@ -72,6 +76,47 @@ final class ExceptionsTest extends TestCase
         self::assertInstanceOf(AbstractDomainException::class, self::asThrowable($e));
         self::assertSame('event_without_price_tier', $e->errorCode());
         self::assertSame(\sprintf('Event "%s" has no price tier and cannot be published.', $id->toString()), $e->getMessage());
+    }
+
+    public function testEventLocked(): void
+    {
+        $id = EventId::generate();
+        $e = EventLockedException::withId($id);
+
+        self::assertInstanceOf(AbstractConflictException::class, self::asThrowable($e));
+        self::assertSame('event_locked', $e->errorCode());
+        self::assertSame(\sprintf('Event "%s" is locked: seats have already been taken.', $id->toString()), $e->getMessage());
+    }
+
+    public function testEventNotDraft(): void
+    {
+        $id = EventId::generate();
+        $e = EventNotDraftException::withId($id);
+
+        self::assertInstanceOf(AbstractConflictException::class, self::asThrowable($e));
+        self::assertSame('event_not_draft', $e->errorCode());
+        self::assertSame(\sprintf('Event "%s" is published: unpublish it before revising it.', $id->toString()), $e->getMessage());
+    }
+
+    public function testEventNotPublished(): void
+    {
+        $id = EventId::generate();
+        $e = EventNotPublishedException::withId($id);
+
+        self::assertInstanceOf(AbstractConflictException::class, self::asThrowable($e));
+        self::assertSame('event_not_published', $e->errorCode());
+        self::assertSame(\sprintf('Event "%s" is not published.', $id->toString()), $e->getMessage());
+    }
+
+    public function testEventStartInPast(): void
+    {
+        $id = EventId::generate();
+        $e = EventStartInPastException::withId($id);
+
+        self::assertInstanceOf(AbstractDomainException::class, self::asThrowable($e));
+        self::assertNotInstanceOf(AbstractConflictException::class, self::asThrowable($e));
+        self::assertSame('event_start_in_past', $e->errorCode());
+        self::assertSame(\sprintf('Event "%s" must start in the future.', $id->toString()), $e->getMessage());
     }
 
     public function testOrganizationSlugTaken(): void

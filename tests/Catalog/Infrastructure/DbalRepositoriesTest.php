@@ -21,17 +21,24 @@ use App\Catalog\Core\Domain\ValueObject\OrganizationName;
 use App\Catalog\Core\Domain\ValueObject\PriceTierLabel;
 use App\Catalog\Core\Domain\ValueObject\Slug;
 use App\Catalog\Core\Domain\ValueObject\Venue;
+use App\Shared\Exception\InvalidValueException;
 use App\Shared\Identity\EventId;
 use App\Shared\Identity\OrganizationId;
 use App\Shared\Identity\PriceTierId;
 use App\Shared\ValueObject\Capacity;
+use DAMA\DoctrineTestBundle\PHPUnit\SkipDatabaseRollback;
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\DriverManager;
+use Doctrine\DBAL\Exception\DriverException;
 use Money\Money;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 final class DbalRepositoriesTest extends KernelTestCase
 {
+    /** Reference "now" of the events built here: their start dates only matter to the queries under test. */
+    private const string LONG_AGO = '2000-01-01T00:00:00+00:00';
+
     private EventRepositoryInterface $events;
     private OrganizationRepositoryInterface $organizations;
 
@@ -81,7 +88,7 @@ final class DbalRepositoriesTest extends KernelTestCase
         ]);
         $this->events->save($event);
 
-        $event->publish();
+        $event->publish(new \DateTimeImmutable(self::LONG_AGO));
         $event->lock();
         $this->events->save($event);
         $loaded = $this->events->get($event->id());
@@ -117,6 +124,176 @@ final class DbalRepositoriesTest extends KernelTestCase
         self::assertNotNull($found);
         self::assertTrue($event->id()->equals($found->id()));
         self::assertSame([], $found->priceTiers());
+    }
+
+    public function testSavingARevisedEventReplacesItsFieldsAndTiersInDeclaredOrder(): void
+    {
+        $organization = $this->organization();
+        [$kept, $removed, $modified] = [PriceTierId::generate(), PriceTierId::generate(), PriceTierId::generate()];
+        $event = $this->event($organization->id(), new \DateTimeImmutable('2026-12-01T20:00:00+00:00'), [
+            new PriceTier($kept, PriceTierLabel::fromString('Plein'), Money::EUR(2500)),
+            new PriceTier($removed, PriceTierLabel::fromString('Réduit'), Money::EUR(1500)),
+            new PriceTier($modified, PriceTierLabel::fromString('Gratuit'), Money::EUR(0)),
+        ]);
+        $this->events->save($event);
+        $added = PriceTierId::generate();
+
+        $event->revise(
+            EventTitle::fromString('Nouveau titre'),
+            EventDescription::fromString('Nouvelle description'),
+            Venue::fromString('Le Zénith'),
+            new \DateTimeImmutable('2027-02-01T21:00:00+01:00'),
+            Capacity::of(42),
+            [
+                new PriceTier($modified, PriceTierLabel::fromString('Mécène'), Money::EUR(9000)),
+                new PriceTier($added, PriceTierLabel::fromString('Étudiant'), Money::EUR(1000)),
+                new PriceTier($kept, PriceTierLabel::fromString('Plein'), Money::EUR(2500)),
+            ],
+            new \DateTimeImmutable(self::LONG_AGO),
+        );
+        $this->events->save($event);
+        $loaded = $this->events->get($event->id());
+
+        self::assertSame('Nouveau titre', $loaded->title()->toString());
+        self::assertSame('Nouvelle description', $loaded->description()->toString());
+        self::assertSame('Le Zénith', $loaded->venue()->toString());
+        self::assertSame('2027-02-01T20:00:00+00:00', $loaded->startsAt()->format(\DATE_ATOM));
+        self::assertSame(42, $loaded->capacity()->toInt());
+        self::assertTrue($organization->id()->equals($loaded->organizationId()));
+        self::assertSame(
+            [[$modified->toString(), 'Mécène', '9000'], [$added->toString(), 'Étudiant', '1000'], [$kept->toString(), 'Plein', '2500']],
+            array_map(static fn(PriceTier $tier): array => [$tier->id()->toString(), $tier->label()->toString(), $tier->price()->getAmount()], $loaded->priceTiers()),
+        );
+        self::assertSame(0, $this->connection()->fetchOne('SELECT COUNT(*) FROM price_tier WHERE id = ?', [$removed->toString()]));
+    }
+
+    public function testSavingAnEventWithoutTiersDeletesThemAll(): void
+    {
+        $event = $this->event($this->organization()->id(), new \DateTimeImmutable('2026-12-01T20:00:00+00:00'), [
+            new PriceTier(PriceTierId::generate(), PriceTierLabel::fromString('Plein'), Money::EUR(2500)),
+            new PriceTier(PriceTierId::generate(), PriceTierLabel::fromString('Réduit'), Money::EUR(1500)),
+        ]);
+        $this->events->save($event);
+
+        $this->revise($event, []);
+        $this->events->save($event);
+
+        self::assertSame([], $this->events->get($event->id())->priceTiers());
+        self::assertSame(0, $this->connection()->fetchOne('SELECT COUNT(*) FROM price_tier WHERE event_id = ?', [$event->id()->toString()]));
+    }
+
+    public function testSavingDoesNotTouchTheTiersOfAnotherEvent(): void
+    {
+        $organization = $this->organization();
+        $other = $this->event($organization->id(), new \DateTimeImmutable('2026-12-01T20:00:00+00:00'), [
+            new PriceTier(PriceTierId::generate(), PriceTierLabel::fromString('Autre'), Money::EUR(700)),
+        ]);
+        $this->events->save($other);
+        $event = $this->event($organization->id(), new \DateTimeImmutable('2026-12-01T20:00:00+00:00'), [
+            new PriceTier(PriceTierId::generate(), PriceTierLabel::fromString('Plein'), Money::EUR(2500)),
+        ]);
+        $this->events->save($event);
+
+        $this->revise($event, [new PriceTier(PriceTierId::generate(), PriceTierLabel::fromString('Réduit'), Money::EUR(1500))]);
+        $this->events->save($event);
+
+        self::assertSame(['Autre'], array_map(static fn(PriceTier $tier): string => $tier->label()->toString(), $this->events->get($other->id())->priceTiers()));
+    }
+
+    public function testSavingATierOfAnotherEventIsRefusedAndWritesNothing(): void
+    {
+        $organization = $this->organization();
+        $foreign = new PriceTier(PriceTierId::generate(), PriceTierLabel::fromString('Autre'), Money::EUR(700));
+        $other = $this->event($organization->id(), new \DateTimeImmutable('2026-12-01T20:00:00+00:00'), [$foreign]);
+        $this->events->save($other);
+        $own = new PriceTier(PriceTierId::generate(), PriceTierLabel::fromString('Plein'), Money::EUR(2500));
+        $event = $this->event($organization->id(), new \DateTimeImmutable('2026-12-01T20:00:00+00:00'), [$own]);
+        $this->events->save($event);
+
+        $this->revise($event, [new PriceTier($foreign->id(), PriceTierLabel::fromString('Volé'), Money::EUR(1)), new PriceTier(PriceTierId::generate(), PriceTierLabel::fromString('Neuf'), Money::EUR(1))]);
+
+        try {
+            $this->events->save($event);
+            self::fail('A tier of another event must be refused.');
+        } catch (InvalidValueException) {
+            $reloadedOther = $this->events->get($other->id());
+            $reloaded = $this->events->get($event->id());
+            self::assertSame(['Autre'], array_map(static fn(PriceTier $tier): string => $tier->label()->toString(), $reloadedOther->priceTiers()));
+            self::assertSame('700', $reloadedOther->priceTiers()[0]->price()->getAmount());
+            self::assertSame('Concert', $reloaded->title()->toString());
+            self::assertSame([$own->id()->toString()], array_map(static fn(PriceTier $tier): string => $tier->id()->toString(), $reloaded->priceTiers()));
+        }
+    }
+
+    public function testGetForUpdateLoadsTheEvent(): void
+    {
+        $event = $this->event($this->organization()->id(), new \DateTimeImmutable('2026-12-01T20:00:00+00:00'), [
+            new PriceTier(PriceTierId::generate(), PriceTierLabel::fromString('Plein'), Money::EUR(2500)),
+        ]);
+        $this->events->save($event);
+
+        $loaded = $this->events->getForUpdate($event->id());
+
+        self::assertTrue($event->id()->equals($loaded->id()));
+        self::assertSame('Plein', $loaded->priceTiers()[0]->label()->toString());
+    }
+
+    public function testGetForUpdateUnknownEventFails(): void
+    {
+        $this->expectException(EventNotFoundException::class);
+
+        $this->events->getForUpdate(EventId::generate());
+    }
+
+    public function testFindForSaleLoadsTheEventOrNothing(): void
+    {
+        $event = $this->event($this->organization()->id(), new \DateTimeImmutable('2026-12-01T20:00:00+00:00'), [
+            new PriceTier(PriceTierId::generate(), PriceTierLabel::fromString('Plein'), Money::EUR(2500)),
+        ]);
+        $this->events->save($event);
+
+        $found = $this->events->findForSale($event->id());
+
+        self::assertNotNull($found);
+        self::assertTrue($event->id()->equals($found->id()));
+        self::assertSame('Plein', $found->priceTiers()[0]->label()->toString());
+        self::assertNull($this->events->findForSale(EventId::generate()));
+    }
+
+    /**
+     * Another connection must see the lock: this test commits its rows (outside the DAMA transaction) and deletes them.
+     */
+    #[SkipDatabaseRollback]
+    public function testGetForUpdateLocksTheEventRowExclusivelyUntilTheTransactionEnds(): void
+    {
+        $this->withCommittedEvent(function (Event $event, Connection $connection, Connection $other): void {
+            $connection->beginTransaction();
+            $this->events->getForUpdate($event->id());
+
+            self::assertSame('55P03', $this->lockError($other, $event, 'FOR KEY SHARE NOWAIT'));
+
+            $connection->rollBack();
+            self::assertSame($event->id()->toString(), $other->fetchOne('SELECT id FROM event WHERE id = ? FOR UPDATE NOWAIT', [$event->id()->toString()]));
+        });
+    }
+
+    /**
+     * The sale terms read takes a key-share lock: it blocks the exclusive lock of a revision or an unpublication,
+     * but not the update of the lock flag by another order.
+     */
+    #[SkipDatabaseRollback]
+    public function testFindForSaleKeySharesTheEventRowUntilTheTransactionEnds(): void
+    {
+        $this->withCommittedEvent(function (Event $event, Connection $connection, Connection $other): void {
+            $connection->beginTransaction();
+            $this->events->findForSale($event->id());
+
+            self::assertSame('55P03', $this->lockError($other, $event, 'FOR UPDATE NOWAIT'));
+            self::assertSame(1, $other->executeStatement('UPDATE event SET locked = true WHERE id = ?', [$event->id()->toString()]));
+
+            $connection->rollBack();
+            self::assertSame($event->id()->toString(), $other->fetchOne('SELECT id FROM event WHERE id = ? FOR UPDATE NOWAIT', [$event->id()->toString()]));
+        });
     }
 
     public function testListPublishedStartingAfterIsStrictPublishedOnlyAndOrdered(): void
@@ -296,7 +473,7 @@ final class DbalRepositoriesTest extends KernelTestCase
     #[DataProvider('inconsistentStatuses')]
     public function testStatusAndKeycloakIdMustAgree(string $status, ?string $keycloakId): void
     {
-        $this->expectException(\Doctrine\DBAL\Exception\DriverException::class);
+        $this->expectException(DriverException::class);
         $this->expectExceptionMessage('SQLSTATE[23514]');
 
         self::getContainer()->get(Connection::class)->executeStatement(
@@ -373,7 +550,59 @@ final class DbalRepositoriesTest extends KernelTestCase
             $startsAt,
             Capacity::of(100),
             $tiers,
+            new \DateTimeImmutable(self::LONG_AGO),
         );
+    }
+
+    /**
+     * @param list<PriceTier> $tiers
+     */
+    private function revise(Event $event, array $tiers): void
+    {
+        $event->revise($event->title(), $event->description(), $event->venue(), $event->startsAt(), $event->capacity(), $tiers, new \DateTimeImmutable(self::LONG_AGO));
+    }
+
+    /**
+     * @param callable(Event, Connection, Connection): void $test receives the committed event, the kernel connection and another connection
+     */
+    private function withCommittedEvent(callable $test): void
+    {
+        $connection = $this->connection();
+        $organization = $this->organization();
+        $event = $this->event($organization->id(), new \DateTimeImmutable('2099-01-01T20:00:00+00:00'), [
+            new PriceTier(PriceTierId::generate(), PriceTierLabel::fromString('Plein'), Money::EUR(2500)),
+        ]);
+        $this->events->save($event);
+        $other = DriverManager::getConnection($connection->getParams());
+        $other->executeStatement("SET lock_timeout = '5s'");
+
+        try {
+            $test($event, $connection, $other);
+        } finally {
+            $other->close();
+            if ($connection->isTransactionActive()) {
+                $connection->rollBack();
+            }
+            $connection->executeStatement('DELETE FROM price_tier WHERE event_id = ?', [$event->id()->toString()]);
+            $connection->executeStatement('DELETE FROM event WHERE id = ?', [$event->id()->toString()]);
+            $connection->executeStatement('DELETE FROM organization WHERE id = ?', [$organization->id()->toString()]);
+        }
+    }
+
+    private function lockError(Connection $other, Event $event, string $lock): ?string
+    {
+        try {
+            $other->fetchOne('SELECT id FROM event WHERE id = ? ' . $lock, [$event->id()->toString()]);
+        } catch (DriverException $exception) {
+            return $exception->getSQLState();
+        }
+
+        return null;
+    }
+
+    private function connection(): Connection
+    {
+        return self::getContainer()->get(Connection::class);
     }
 
     private function published(OrganizationId $organizationId, string $startsAt, string $label = 'Plein'): EventId
@@ -381,7 +610,7 @@ final class DbalRepositoriesTest extends KernelTestCase
         $event = $this->event($organizationId, new \DateTimeImmutable($startsAt), [
             new PriceTier(PriceTierId::generate(), PriceTierLabel::fromString($label), Money::EUR(1000)),
         ]);
-        $event->publish();
+        $event->publish(new \DateTimeImmutable(self::LONG_AGO));
         $this->events->save($event);
 
         return $event->id();

@@ -20,7 +20,8 @@ final readonly class DbalSeatStockRepository implements SeatStockRepositoryInter
     public function create(EventId $eventId, Capacity $capacity): void
     {
         $this->connection->executeStatement(
-            'INSERT INTO seat_stock (event_id, capacity, taken) VALUES (:id, :capacity, 0)',
+            'INSERT INTO seat_stock (event_id, capacity, taken) VALUES (:id, :capacity, 0)
+             ON CONFLICT (event_id) DO UPDATE SET capacity = EXCLUDED.capacity',
             ['id' => $eventId->toString(), 'capacity' => $capacity->toInt()],
         );
     }
