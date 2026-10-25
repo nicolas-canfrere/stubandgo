@@ -45,12 +45,23 @@ crap: test-db ## Run PHPUnit with coverage and fail on any method with CRAP >= 9
 	docker compose -f compose.test.yaml run --rm php bin/phpunit --coverage-crap4j var/coverage/crap4j.xml
 	docker compose -f compose.test.yaml run --rm php bin/crap-check var/coverage/crap4j.xml 9
 
-mutation: test-db ## Run mutation testing with Infection, failing if the test database logged a FATAL
-	@since=$$(date -u +%Y-%m-%dT%H:%M:%SZ); \
-	docker compose -f compose.test.yaml run --rm -e XDEBUG_MODE=coverage php vendor/bin/infection --threads=max; status=$$?; \
+# Infection threads ("max" = CPU count - 1); each thread N tests against its own app_testN database.
+MUTATION_THREADS ?= $(shell n=$$(nproc); [ "$$n" -gt 1 ] && echo $$((n - 1)) || echo 1)
+
+mutation: test-db ## Run mutation testing with Infection, failing on a FATAL of the test database or any skipped mutant
+	@sql=""; for i in $$(seq 1 $(MUTATION_THREADS)); do \
+		sql="$$sql DROP DATABASE IF EXISTS app_test$$i WITH (FORCE); CREATE DATABASE app_test$$i TEMPLATE app_test;"; \
+	done; \
+	echo "$$sql" | docker compose -f compose.test.yaml exec -T database psql -q -v ON_ERROR_STOP=1 -U app -d postgres || exit 1; \
+	echo "Cloned app_test into app_test1..app_test$(MUTATION_THREADS), one database per Infection thread."
+	@since=$$(date -u +%Y-%m-%dT%H:%M:%SZ); rm -f var/infection/summary.json; \
+	docker compose -f compose.test.yaml run --rm -e XDEBUG_MODE=coverage php vendor/bin/infection --threads=$(MUTATION_THREADS); status=$$?; \
 	fatals=$$(docker compose -f compose.test.yaml logs --no-log-prefix --since "$$since" database | grep FATAL); \
 	if [ -n "$$fatals" ]; then echo "The test database logged FATAL errors during mutation testing:"; echo "$$fatals"; exit 1; fi; \
 	echo "No FATAL logged by the test database since $$since."; \
+	skipped=$$(grep -o '"skippedCount":[0-9]*' var/infection/summary.json | cut -d: -f2); \
+	if [ "$$skipped" != "0" ]; then echo "Infection skipped $${skipped:-an unknown number of} mutants (\"required more time than configured\"): the MSI is hollow."; exit 1; fi; \
+	echo "No mutant skipped by Infection."; \
 	exit $$status
 
 phpstan: ## Run PHPStan static analysis

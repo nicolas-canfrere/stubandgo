@@ -8,11 +8,19 @@
             "Kernel.php"
         ]
     },
+    // Infection skips (does not run) a mutant when the summed initial-run time of its covering test classes,
+    // measured under Xdebug coverage, reaches the timeout. Code on every request path (TraceParent,
+    // ProblemDetailsListener...) is covered by almost the whole suite, about 22 s: 30 s leaves headroom, and
+    // make mutation fails on any skipped mutant once the suite outgrows it.
+    "timeout": 30,
     "testFrameworkOptions": "--exclude-group=concurrency",
     "logs": {
         "text": "var/infection/infection.log",
-        "html": "var/infection/infection.html"
+        "html": "var/infection/infection.html",
+        "summaryJson": "var/infection/summary.json"
     },
+    // A timeout counts as killed: allow none, so that a run slowed down by lock waits cannot pass.
+    "maxTimeouts": 0,
     "minMsi": 100,
     "minCoveredMsi": 100,
     "mutators": {

@@ -193,9 +193,17 @@ Xdebug in coverage mode:
 - `make mutation`: Infection on `src/` with the default mutators. It requires
   100% MSI and covered MSI (`infection.json5`); the log is in
   `var/infection/infection.log`, the HTML report in `var/infection/infection.html`.
-  Every Infection thread uses the single `app_test` database; the target then
-  fails if the test database logged any `FATAL` during the run (a test that
-  cannot reach the database would otherwise count its mutants as killed).
+  Infection thread N (`TEST_TOKEN=N`) tests against its own `app_testN`
+  database, cloned from the migrated `app_test` before the run: parallel mutant
+  runs sharing one database waited on each other's row locks (fixtures with a
+  fixed unique key) and timed out. The target fails if the test database logged
+  any `FATAL` during the run (a test that cannot reach the database would
+  otherwise count its mutants as killed), if any mutant timed out
+  (`maxTimeouts: 0`; a timeout counts as killed) and if Infection skipped any
+  mutant ("required more time than configured": its covering tests exceed the
+  `timeout`, and skipped mutants are left out of the MSI). Never answer a skip
+  by excluding code: make the covering tests faster or, with a reason, raise
+  `timeout`.
 - `make test-down`: stop and remove the test stack.
 
 `phpunit.dist.xml` sets `failOnDeprecation`, `failOnNotice` and

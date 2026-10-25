@@ -6,6 +6,7 @@ doctrine:
 when@test:
     doctrine:
         dbal:
-            # A single test database for every PHPUnit process: Infection sets
-            # TEST_TOKEN per thread, so it must not be part of the name.
-            dbname_suffix: '_test'
+            # app_test, or app_test<N> for Infection thread N (Infection sets
+            # TEST_TOKEN per thread; make mutation clones one database per thread
+            # so that parallel mutant runs never wait on each other's locks).
+            dbname_suffix: '_test%env(default::TEST_TOKEN)%'
