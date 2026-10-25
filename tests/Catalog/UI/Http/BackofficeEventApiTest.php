@@ -484,6 +484,29 @@ final class BackofficeEventApiTest extends WebTestCase
                 self::assertArrayHasKey($status, $operation['responses'], $path . ' ' . $verb);
             }
         }
+
+        foreach (['CreateEventRequest', 'EventRequest'] as $request) {
+            self::assertSame(200, $this->docNode($doc, 'components', 'schemas', $request, 'properties', 'capacity', 'example'), $request);
+        }
+        foreach (['NewPriceTierRequest', 'PriceTierRequest'] as $request) {
+            self::assertSame(2500, $this->docNode($doc, 'components', 'schemas', $request, 'properties', 'priceCents', 'example'), $request);
+        }
+        self::assertTrue($this->docNode($doc, 'components', 'schemas', 'PriceTierRequest', 'properties', 'id', 'nullable'));
+    }
+
+    /**
+     * @param array<mixed> $doc
+     */
+    private function docNode(array $doc, string ...$keys): mixed
+    {
+        $node = $doc;
+        foreach ($keys as $key) {
+            self::assertIsArray($node);
+            self::assertArrayHasKey($key, $node);
+            $node = $node[$key];
+        }
+
+        return $node;
     }
 
     private function publishedEventWithPendingOrder(): string
