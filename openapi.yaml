@@ -550,12 +550,7 @@ paths:
               $ref: '#/components/schemas/CreateOrganizationRequest'
       responses:
         '201':
-          description: 'The organization was created, active or pending_keycloak; its URL is in the Location header.'
-          headers:
-            Location:
-              description: 'URL of the organization.'
-              schema:
-                type: string
+          description: 'The organization was created, active or pending_keycloak.'
           content:
             application/json:
               schema:

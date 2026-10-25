@@ -12,6 +12,7 @@ use App\Shared\Bus\QueryBusInterface;
 use App\Shared\Exception\AbstractUpstreamFailureException;
 use App\Shared\Identity\OrganizationId;
 use OpenApi\Attributes as OA;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
@@ -27,6 +28,7 @@ final readonly class CreateOrganizationController
     public function __construct(
         private CommandBusInterface $commandBus,
         private QueryBusInterface $queryBus,
+        private LoggerInterface $logger,
     ) {
     }
 
@@ -41,8 +43,7 @@ final readonly class CreateOrganizationController
         responses: [
             new OA\Response(
                 response: 201,
-                description: 'The organization was created, active or pending_keycloak; its URL is in the Location header.',
-                headers: [new OA\Header(header: 'Location', description: 'URL of the organization.', schema: new OA\Schema(type: 'string'))],
+                description: 'The organization was created, active or pending_keycloak.',
                 content: new OA\JsonContent(ref: '#/components/schemas/OrganizationAdmin'),
             ),
             new OA\Response(response: 401, description: 'Access token missing or invalid (/problems/unauthorized, with a WWW-Authenticate: Bearer challenge).', content: new OA\JsonContent(ref: '#/components/schemas/Problem')),
@@ -58,12 +59,11 @@ final readonly class CreateOrganizationController
 
         try {
             $this->commandBus->dispatch(new ProvisionOrganization($organizationId));
-        } catch (AbstractUpstreamFailureException) {
+        } catch (AbstractUpstreamFailureException $exception) {
             // Keycloak is down: the organization stays pending_keycloak and the provisioning can be retried.
+            $this->logger->warning('organization.provisioning_deferred', ['organization_id' => $organizationId, 'error_code' => $exception->errorCode()]);
         }
 
-        $organization = $this->queryBus->ask(new GetOrganizationAdmin($organizationId));
-
-        return new JsonResponse($organization, Response::HTTP_CREATED, ['Location' => '/api/platform/organizations/' . $organization->id]);
+        return new JsonResponse($this->queryBus->ask(new GetOrganizationAdmin($organizationId)), Response::HTTP_CREATED);
     }
 }

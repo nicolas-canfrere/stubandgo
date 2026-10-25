@@ -7,8 +7,10 @@ namespace App\Tests\Catalog\UI\Http;
 use App\Catalog\Core\Domain\ValueObject\KeycloakOrganizationId;
 use App\Catalog\Core\Domain\ValueObject\Slug;
 use App\Tests\Catalog\CatalogFixturesTrait;
+use App\Tests\Shared\Infrastructure\Observability\LogRecordsTrait;
 use App\Tests\Support\Catalog\InMemoryOrganizationDirectory;
 use App\Tests\Support\Security\TestTokenIssuer;
+use Monolog\Level;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -16,6 +18,7 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 final class PlatformApiTest extends WebTestCase
 {
     use CatalogFixturesTrait;
+    use LogRecordsTrait;
 
     private const string KEYCLOAK_ID = '0f8c4f8e-3c7a-4b52-9a51-6d1f2b7c0a55';
 
@@ -86,7 +89,7 @@ final class PlatformApiTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(201);
         self::assertResponseHeaderSame('Content-Type', 'application/json');
-        self::assertResponseHeaderSame('Location', '/api/platform/organizations/' . $this->idOf($body));
+        self::assertFalse($this->client->getResponse()->headers->has('Location'), 'No route reads one organization: the creation names no URL.');
         self::assertSame(['id' => $body['id'], 'name' => 'Théâtre de la Ville', 'slug' => 'theatre-ville', 'commissionBasisPoints' => 1250, 'status' => 'active'], $body);
         self::assertCount(1, $this->directory->ensureCalls());
         self::assertNotNull($this->directory->organizationOf(Slug::fromString('theatre-ville')));
@@ -100,6 +103,10 @@ final class PlatformApiTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(201);
         self::assertSame('pending_keycloak', $created['status']);
+        $deferred = self::logRecords('organization.provisioning_deferred');
+        self::assertCount(1, $deferred);
+        self::assertSame(Level::Warning, $deferred[0]->level);
+        self::assertSame(['organization_id' => $created['id'], 'error_code' => 'identity_provider_unavailable'], $deferred[0]->context);
         self::assertSame($created, $this->listed()[$this->idOf($created)] ?? null);
 
         $retried = $this->provision($this->idOf($created));
@@ -141,7 +148,7 @@ final class PlatformApiTest extends WebTestCase
         self::assertResponseStatusCodeSame(502);
         self::assertResponseHeaderSame('Content-Type', 'application/problem+json');
         self::assertSame('pending_keycloak', $this->listed()[$organization['id']]['status'] ?? null);
-        self::assertArrayHasKey('type', $problem);
+        self::assertSame('/problems/identity_provider_unavailable', $problem['type'] ?? null);
     }
 
     public function testProvisioningAnUnknownOrganizationIsNotFound(): void
@@ -292,6 +299,9 @@ final class PlatformApiTest extends WebTestCase
                 $this->docNode($operation, 'responses', $status);
             }
         }
+        $created = $this->docNode($doc, 'paths', '/api/platform/organizations', 'post', 'responses', '201');
+        self::assertIsArray($created);
+        self::assertArrayNotHasKey('headers', $created);
         $conflict = json_encode($this->docNode($doc, 'paths', '/api/platform/organizations', 'post', 'responses', '409'), \JSON_THROW_ON_ERROR);
         self::assertStringContainsString('organization_slug_taken', $conflict);
         self::assertStringContainsString('organization_name_taken', $conflict);
