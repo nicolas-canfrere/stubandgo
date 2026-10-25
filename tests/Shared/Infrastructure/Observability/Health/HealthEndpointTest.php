@@ -100,6 +100,26 @@ final class HealthEndpointTest extends WebTestCase
         self::assertResponseStatusCodeSame(200);
     }
 
+    public function testHealthReturns503WithEveryCheckWhenTheDatabaseFails(): void
+    {
+        try {
+            $this->connection->executeStatement('SELECT 1 / 0');
+        } catch (\Throwable) {
+            // The failed statement aborts the test transaction: every later query fails, as with a database that is down.
+        }
+
+        $body = $this->health();
+
+        self::assertResponseStatusCodeSame(503);
+        self::assertResponseHeaderSame('Content-Type', 'application/json');
+        self::assertSame('degraded', $body['status']);
+        self::assertEqualsCanonicalizing(['database', 'rabbitmq', 'outbox', 'worker'], array_keys($body['checks']));
+        foreach (['database', 'outbox', 'worker'] as $name) {
+            self::assertFalse($body['checks'][$name]['healthy'], $name);
+            self::assertStringNotContainsString('SQLSTATE', $body['checks'][$name]['detail']);
+        }
+    }
+
     /**
      * @return iterable<string, array{string}>
      */

@@ -24,7 +24,11 @@ final readonly class OutboxHealthCheck implements HealthCheckInterface
 
     public function check(): HealthStatus
     {
-        $age = $this->backlog->oldestPendingAgeSeconds();
+        try {
+            $age = $this->backlog->oldestPendingAgeSeconds();
+        } catch (\Throwable) {
+            return new HealthStatus(false, 'Outbox unavailable.');
+        }
 
         return new HealthStatus(
             $age <= self::MAX_AGE_SECONDS,

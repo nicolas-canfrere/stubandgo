@@ -25,7 +25,12 @@ final readonly class WorkerHealthCheck implements HealthCheckInterface
 
     public function check(): HealthStatus
     {
-        $lastSeenAt = $this->heartbeat->lastSeenAt();
+        try {
+            $lastSeenAt = $this->heartbeat->lastSeenAt();
+        } catch (\Throwable) {
+            return new HealthStatus(false, 'Worker unavailable.');
+        }
+
         if (null === $lastSeenAt) {
             return new HealthStatus(false, 'Worker never seen.');
         }
