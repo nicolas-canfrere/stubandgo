@@ -105,6 +105,38 @@ Cartes de test : `4242424242424242` (acceptée), `4000000000000002` (refusée). 
 
 Les erreurs HTTP suivent la RFC 9457 (`application/problem+json`), les dates de l'API sont en UTC (suffixe `Z`).
 
+## Back-office (L3)
+
+Deux espaces, qui exigent un jeton (401 sinon) : la **plateforme** (`/api/platform/…`, realm `stubandgo-staff`, rôle `platform-admin`) et l'**espace organisation** (`/api/backoffice/…`, realm `stubandgo`, rôle `organization-admin`, sur l'organisation Keycloak du membre). Un jeton sans le droit, un événement inconnu ou d'une autre organisation répondent `403 /problems/forbidden`. Le détail de chaque route (schémas, erreurs) est dans `openapi.yaml`.
+
+| Route | Rôle |
+|---|---|
+| `GET /api/platform/organizations` | liste (nom, slug, taux en points de base, statut), triée par nom |
+| `POST /api/platform/organizations` | crée l'organisation (`{"name","slug","commissionBasisPoints"}`) puis la provisionne dans Keycloak ; slug ou nom déjà pris : 409 |
+| `POST /api/platform/organizations/{id}/provisioning` | relance le provisionnement (déjà actif : 200 sans appel à Keycloak ; Keycloak en échec : 502) |
+| `PUT /api/platform/organizations/{id}/commission-rate` | change le taux (les commandes existantes gardent le taux figé à leur création) |
+| `POST /api/platform/organizations/{id}/invitations` | invite un membre (`{"email","role"}`, `admin` ou `controller`) |
+| `POST /api/backoffice/invitations` | idem, pour l'organisation de l'administrateur |
+| `GET` / `POST /api/backoffice/events` | liste (tous statuts) / création en `draft` |
+| `GET` / `PUT /api/backoffice/events/{eventId}` | détail (brouillon compris) / remplacement du titre, de la description, du lieu, de la date, de la capacité et de la liste complète des tarifs |
+| `POST` / `DELETE /api/backoffice/events/{eventId}/publication` | publier / dépublier |
+| `GET /api/backoffice/events/{eventId}/sales` | billets et montants par tarif, total, commission, net dû, places restantes |
+
+Règles : un événement ne se modifie qu'en `draft` et non verrouillé (dépublier d'abord) ; il est verrouillé dès la première place prise, et ni sa modification ni sa dépublication ne sont alors possibles (409 `/problems/event_locked`) ; la date de début doit être dans le futur. Les ventes ne comptent que les commandes payées, aux montants et au taux figés.
+
+### Démo pas à pas
+
+Dans l'ordre : `make keycloak-reset` si le volume Keycloak a déjà servi, `make up`, migrations, `app:demo:load` (voir [Démarrage](#démarrage)). Les clients des realms sont des clients publics code + PKCE : le jeton se lit dans le front (dépôt `stubandgo-app`), ou, pour le realm de la plateforme seulement, s'obtient en direct avec `stubandgo-staff-cli` comme plus haut.
+
+1. `admin.plateforme` crée « Jazz Club » avec un taux de 3 % (`"commissionBasisPoints":300`) : réponse 201, statut `active`.
+2. Il invite `gerant@jazz-club.test` (`"role":"admin"`) : 204, et Keycloak envoie « Update Your Account » à Mailpit (http://localhost:8025). Le lien mène à une page « Click here to proceed », puis au formulaire de mot de passe. Le gérant définit le sien, se connecte au front (espace organisation) et obtient un jeton de l'organisation `jazz-club`.
+3. Le gérant crée un événement avec deux tarifs, le modifie, le publie : il apparaît dans `GET /api/events`.
+4. Il invite un contrôleur (`POST /api/backoffice/invitations`, `"role":"controller"`) ; une fois son mot de passe défini, celui-ci scanne comme dans le parcours L2.
+5. Un acheteur commande et paie deux billets : `GET …/sales` donne les billets par tarif, les places restantes, le total, la commission et le net dû ; l'événement est verrouillé, `PUT` et `DELETE …/publication` répondent 409.
+6. `docker compose stop keycloak`, puis la création d'une organisation répond quand même 201 avec le statut `pending_keycloak` (une relance répond 502 tant que Keycloak est arrêté, et une invitation 409 `organization_not_active`). Keycloak redémarré (attendre `healthy`), `POST …/provisioning` répond 200 `active`.
+
+Un utilisateur invité n'a pas de prénom ni de nom : le profil utilisateur du realm `stubandgo` ne les exige pas, sinon Keycloak refuserait la connexion (« Account is not fully set up ») tant qu'ils ne sont pas saisis.
+
 ## Suivre une commande dans les logs
 
 Les logs sont du JSON sur stderr (Monolog), et chaque ligne porte `extra.trace_id`. Chaque réponse HTTP renvoie un en-tête `traceparent` (format W3C) ; un `traceparent` entrant est repris. L'identifiant de trace traverse l'outbox, le relais et RabbitMQ : le worker qui envoie l'email logue le même `trace_id` que la requête de paiement.
@@ -151,6 +183,10 @@ Comptes de démo, tous avec le mot de passe `stubandgo-demo` : `controleur.rock`
 
 Les navigateurs parlent à Keycloak par `http://localhost:8180`, l'API par `http://keycloak:8080` (variables `KEYCLOAK_PUBLIC_URL` et `KEYCLOAK_INTERNAL_URL` de `.env`). Keycloak annonce toujours l'émetteur public. `make keycloak-check` le vérifie depuis le conteneur `php` : il lit la discovery interne des deux realms et échoue si l'`issuer` n'est pas l'émetteur public (ou si Keycloak ne répond pas).
 
+Le back-office pilote Keycloak par son API d'administration avec le client confidentiel `stubandgo-admin-api` du realm `stubandgo` : compte de service (`client_credentials`) aux seuls rôles `manage-organizations`, `manage-users` et `view-realm`. Son secret de démo `stubandgo-admin-demo-secret` est dans l'export du realm et dans `.env` (`KEYCLOAK_ADMIN_CLIENT_ID`, `KEYCLOAK_ADMIN_CLIENT_SECRET`) : valeur de démonstration, à ne jamais réutiliser hors de la pile de dev. Le realm envoie ses emails (invitations : mot de passe à définir, lien valable 3 jours) au SMTP de Mailpit, `mailer:1025`, expéditeur `no-reply@stubandgo.test` ; ils arrivent dans la même boîte Mailpit que les billets.
+
+**Keycloak indisponible.** Une organisation créée alors reste `pending_keycloak` (201) et se provisionne ensuite par la relance ; une relance échoue en 502 `/problems/identity_provider_unavailable` ; une invitation échoue en 502 (l'utilisateur créé à moitié est supprimé) ou en 409 si l'organisation est en attente. Les jetons déjà émis restent valables (les clés publiques sont en cache).
+
 ## Commandes `make`
 
 | Cible | Rôle |
@@ -174,9 +210,11 @@ Les navigateurs parlent à Keycloak par `http://localhost:8180`, l'API par `http
 
 ## Limites
 
-- Seul le scan exige un jeton (L2) : le catalogue, la commande, le paiement et l'état de commande restent publics, et `/health` et `/metrics` restent ouverts à tout client qui atteint l'API (limite assumée de la L2).
-- Un jeton du realm de la plateforme (`stubandgo-staff`, par exemple obtenu avec `stubandgo-staff-cli`) est accepté par l'API mais ne donne aucun droit en L2.
-- Pas de back-office : les organisations et événements sont créés par `app:demo:load` (prévu en L3).
+- Le scan et le back-office exigent un jeton : le catalogue, la commande, le paiement et l'état de commande restent publics, et `/health` et `/metrics` restent ouverts à tout client qui atteint l'API (limite assumée de la L2).
+- Un jeton du realm de la plateforme (`stubandgo-staff`, par exemple obtenu avec `stubandgo-staff-cli`) est accepté par l'API ; seul le rôle `platform-admin` ouvre les routes de la plateforme.
+- Le back-office ne gère pas les membres au-delà de l'invitation : pas de liste, de changement de rôle ni de retrait ; un membre invité n'a ni prénom ni nom ; une invitation se refait depuis zéro (l'email doit être inconnu de Keycloak).
+- Un événement ayant déjà vendu un billet ne peut plus être modifié ni dépublié ; un événement publié ne se modifie qu'après dépublication.
+- Le compte de service et son secret sont des valeurs de démo, et le volume Keycloak n'est pas sauvegardé.
 - Le paiement est simulé et aucun prestataire réel n'est appelé.
 
 ## Non-objectifs et évolutions possibles
