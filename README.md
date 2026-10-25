@@ -41,6 +41,7 @@ docker compose start worker
 | Métriques (format Prometheus) | http://localhost:8080/metrics |
 | Mailpit (emails reçus) | http://localhost:8025 |
 | RabbitMQ (guest / guest) | http://localhost:15672 |
+| Keycloak (console `admin` / `admin`) | http://localhost:8180 |
 
 `/health` répond 200 quand la base, la file d'attente, l'outbox et le worker sont sains (le worker doit avoir battu au moins une fois, ce qui prend quelques secondes après `make up`).
 
@@ -119,6 +120,19 @@ Avec RabbitMQ, `messenger:failed:show` donne seulement le nombre de messages (le
 - Les messages asynchrones passent par une outbox transactionnelle : voir [docs/outbox.md](docs/outbox.md).
 - Règles de projet détaillées (conventions, feature workflow) : `AGENTS.md`.
 
+## Keycloak
+
+Le service `keycloak` (`quay.io/keycloak/keycloak:26.8.1`, mode `start-dev`) démarre avec `make up`. Il n'a pas de volume : à chaque création du conteneur, il réimporte les realms versionnés dans `docker/keycloak/`, l'état de démo est donc toujours celui des fichiers (`docker compose up -d --force-recreate keycloak` pour repartir de l'export). Le service `php` n'en dépend pas, la suite de tests ne le contacte jamais.
+
+| Realm | Émetteur | Contenu |
+|---|---|---|
+| `stubandgo` | `http://localhost:8180/realms/stubandgo` | organisations `demo-rock-asso` et `demo-theatre-ville`, rôles `organization-admin` et `organization-controller`, client public `stubandgo-app` (code + PKCE, redirection `http://localhost:5173/*`) |
+| `stubandgo-staff` | `http://localhost:8180/realms/stubandgo-staff` | rôle `platform-admin`, client public `stubandgo-staff-cli` (direct access grants autorisés) |
+
+Comptes de démo, tous avec le mot de passe `stubandgo-demo` : `controleur.rock` (contrôleur, Rock Asso), `admin.rock` (administrateur, Rock Asso), `controleur.theatre` (contrôleur, Théâtre de la Ville) dans `stubandgo` ; `admin.plateforme` (`platform-admin`) dans `stubandgo-staff`. La console d'administration est `http://localhost:8180` (`admin` / `admin`).
+
+Les navigateurs parlent à Keycloak par `http://localhost:8180`, l'API par `http://keycloak:8080` (variables `KEYCLOAK_PUBLIC_URL` et `KEYCLOAK_INTERNAL_URL` de `.env`). Keycloak annonce toujours l'émetteur public. `make keycloak-check` le vérifie depuis le conteneur `php` : il lit la discovery interne des deux realms et échoue si l'`issuer` n'est pas l'émetteur public (ou si Keycloak ne répond pas).
+
 ## Commandes `make`
 
 | Cible | Rôle |
@@ -134,6 +148,7 @@ Avec RabbitMQ, `messenger:failed:show` donne seulement le nombre de messages (le
 | `make deptrac` | règles de dépendances entre couches |
 | `make lint-container` | lint du conteneur de production (alias d'autowiring que l'environnement de test redéfinit) |
 | `make openapi` / `make openapi-check` / `make openapi-lint` | régénérer, vérifier, linter `openapi.yaml` |
+| `make keycloak-check` | vérifier que Keycloak annonce l'émetteur public des deux realms (stack démarrée, hors `ci`) |
 | `make ci` | tous les contrôles |
 
 `make help` liste toutes les cibles.
