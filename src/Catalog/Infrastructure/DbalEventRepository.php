@@ -62,8 +62,6 @@ final readonly class DbalEventRepository implements EventRepositoryInterface
             ['locked' => ParameterType::BOOLEAN],
         );
 
-        $this->deleteTiersOtherThan($event->id(), $tierIds);
-
         foreach ($event->priceTiers() as $position => $tier) {
             $this->connection->executeStatement(
                 'INSERT INTO price_tier (id, event_id, position, label, price_cents)
@@ -79,6 +77,9 @@ final readonly class DbalEventRepository implements EventRepositoryInterface
                 ],
             );
         }
+
+        // Last: the tiers just written are among those the deletion must spare, so a kept tier is updated in place.
+        $this->deleteTiersOtherThan($event->id(), $tierIds);
     }
 
     public function get(EventId $id): Event
