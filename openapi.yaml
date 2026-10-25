@@ -732,6 +732,59 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Problem'
+  '/api/backoffice/events/{eventId}/sales':
+    get:
+      tags:
+        - Backoffice
+      summary: 'Report the sales of an event of the organization of the caller.'
+      description: 'Only paid orders count in the tickets and amounts, which are sums of the amounts frozen on the orders; the remaining seats also leave out the seats held by pending orders. Requires the Keycloak access token of an administrator of an organization (realm role organization-admin).'
+      operationId: get_sales_backoffice_get_event_sales
+      parameters:
+        -
+          name: eventId
+          in: path
+          description: 'ULID of the event.'
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 'The sales of the event; amounts are in euro cents. Every price tier of the event is listed, with zeros when it sold nothing.'
+          content:
+            application/json:
+              schema:
+                required:
+                  - eventId
+                  - seatsRemaining
+                  - ticketsSold
+                  - totalCents
+                  - commissionCents
+                  - netCents
+                  - priceTiers
+                properties:
+                  eventId: { type: string }
+                  seatsRemaining: { type: integer, example: 93 }
+                  ticketsSold: { type: integer, example: 4 }
+                  totalCents: { type: integer, example: 9000 }
+                  commissionCents: { type: integer, example: 1150 }
+                  netCents: { type: integer, example: 7850 }
+                  priceTiers: { type: array, items: { required: [priceTierId, label, ticketsSold, totalCents], properties: { priceTierId: { type: string }, label: { type: string, example: 'Plein tarif' }, ticketsSold: { type: integer, example: 3 }, totalCents: { type: integer, example: 7500 } }, type: object } }
+                type: object
+        '401':
+          description: 'Access token missing or invalid (/problems/unauthorized, with a WWW-Authenticate: Bearer challenge).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: 'The member is not an administrator of the organization that owns the event, or the event does not exist (/problems/forbidden).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+        -
+          bearerAuth: []
   '/api/orders/{orderId}':
     get:
       tags:

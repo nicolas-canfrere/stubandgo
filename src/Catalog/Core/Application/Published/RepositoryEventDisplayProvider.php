@@ -26,6 +26,6 @@ final readonly class RepositoryEventDisplayProvider implements EventDisplayProvi
             $labels[$tier->id()->toString()] = $tier->label()->toString();
         }
 
-        return new EventDisplay($event->title()->toString(), $event->venue()->toString(), $event->startsAt(), $labels);
+        return new EventDisplay($event->title()->toString(), $event->venue()->toString(), $event->startsAt(), $labels, $event->capacity()->toInt());
     }
 }

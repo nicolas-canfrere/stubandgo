@@ -68,6 +68,7 @@ final class PublishedLanguageTest extends AbstractCatalogTestCase
             'La Cigale',
             new \DateTimeImmutable('2026-12-01T19:00:00+00:00'),
             [$plein => 'Plein', $reduit => 'Réduit'],
+            100,
         ), $display);
     }
 

@@ -18,7 +18,7 @@ final class CatalogEventDisplayGatewayTest extends TestCase
         $eventId = EventId::generate();
         $tier = PriceTierId::generate();
         $startsAt = new \DateTimeImmutable('2026-12-31T19:30:00+00:00');
-        $provider = new class($eventId->toString(), new EventDisplay('Concert', 'La Cigale', $startsAt, [$tier->toString() => 'Plein'])) implements EventDisplayProviderInterface {
+        $provider = new class($eventId->toString(), new EventDisplay('Concert', 'La Cigale', $startsAt, [$tier->toString() => 'Plein'], 100)) implements EventDisplayProviderInterface {
             public function __construct(private readonly string $id, private readonly EventDisplay $display)
             {
             }
