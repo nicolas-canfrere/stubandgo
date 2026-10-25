@@ -49,6 +49,10 @@ services:
         resource: '../src/Access/Core/Application/Command/*Handler.php'
         tags:
             - { name: messenger.message_handler, bus: command.bus }
+    App\Access\Core\Application\Query\:
+        resource: '../src/Access/Core/Application/Query/*Handler.php'
+        tags:
+            - { name: messenger.message_handler, bus: query.bus }
     App\Access\Core\Application\Listener\:
         resource: '../src/Access/Core/Application/Listener/'
         tags:
@@ -94,6 +98,12 @@ when@test:
             public: true
         App\Access\Core\Domain\TicketBundleRepositoryInterface:
             alias: App\Access\Infrastructure\DbalTicketBundleRepository
+            public: true
+        App\Access\Core\Domain\AdmissionRightRepositoryInterface:
+            alias: App\Access\Infrastructure\DbalAdmissionRightRepository
+            public: true
+        App\Access\Core\Domain\ScanAttemptRepositoryInterface:
+            alias: App\Access\Infrastructure\DbalScanAttemptRepository
             public: true
         App\Tests\Access\Fixtures\ControllableTicketTokenGenerator:
             decorates: App\Access\Infrastructure\RandomTicketTokenGenerator

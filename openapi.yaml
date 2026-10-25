@@ -1,13 +1,53 @@
 openapi: 3.0.0
 info:
   title: 'stubandgo public API'
-  description: 'Catalog of organizations and published events, order placement and simulated payment. Errors follow RFC 9457 Problem Details.'
+  description: 'Catalog of organizations and published events, order placement, simulated payment and ticket scanning (not protected in L1). Errors follow RFC 9457 Problem Details.'
   version: 1.0.0
 servers:
   -
     url: /
     description: 'Same origin as this API'
 paths:
+  '/api/events/{eventId}/scans':
+    post:
+      tags:
+        - Access
+      summary: 'Scan a ticket token at the gate of an event.'
+      description: 'Consumes the admission right of the token for the event: only the first scan of a ticket is valid. Every scan is recorded, a malformed token included (outcome "unknown"). This route is not protected in L1: any client may scan.'
+      operationId: post_access_scan_ticket
+      parameters:
+        -
+          name: eventId
+          in: path
+          description: 'ULID of the event whose gate scans the token.'
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScanTicketRequest'
+      responses:
+        '200':
+          description: 'The verdict of the scan, whatever it is.'
+          content:
+            application/json:
+              schema:
+                required:
+                  - outcome
+                  - firstUsedAt
+                properties:
+                  outcome: { type: string, enum: [valid, already_used, wrong_event, unknown] }
+                  firstUsedAt: { description: 'For already_used only, when the ticket was first scanned, in UTC (RFC 3339, Z suffix); null otherwise.', type: string, format: date-time, example: '2026-11-20T19:00:00Z', nullable: true }
+                type: object
+        '422':
+          description: 'Malformed payload (/problems/validation_failed) or event identifier that is not a ULID (/problems/invalid_value); nothing is recorded.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
   '/api/events/{eventId}':
     get:
       tags:
@@ -388,6 +428,15 @@ components:
           items:
             $ref: '#/components/schemas/EventSummary'
       type: object
+    ScanTicketRequest:
+      required:
+        - token
+      properties:
+        token:
+          description: 'Token read from the QR code of the ticket (43 base64url characters for a real ticket).'
+          type: string
+          example: gKLhZN-ot9fBxtYtPWJNQkFE2j03nIhf5Rfh3Q52pww
+      type: object
     PayOrderRequest:
       required:
         - cardNumber
@@ -427,6 +476,9 @@ components:
       type: object
 security: []
 tags:
+  -
+    name: Access
+    description: Access
   -
     name: Catalog
     description: Catalog

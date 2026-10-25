@@ -24,8 +24,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 #[AsCommand(name: 'test:sales:dispatch', description: 'Dispatches a Sales command for the concurrency tests')]
 final class DispatchSalesCommand extends Command
 {
-    private const int BARRIER_TIMEOUT_MICROSECONDS = 60_000_000;
-    private const int POLL_MICROSECONDS = 200;
+    use WaitsForBarrierTrait;
 
     public function __construct(
         private readonly CommandBusInterface $commandBus,
@@ -72,21 +71,5 @@ final class DispatchSalesCommand extends Command
         $output->writeln($outcome, OutputInterface::VERBOSITY_QUIET);
 
         return Command::SUCCESS;
-    }
-
-    private function waitFor(string $barrier): void
-    {
-        $waited = 0;
-        clearstatcache();
-
-        while (!file_exists($barrier)) {
-            if ($waited >= self::BARRIER_TIMEOUT_MICROSECONDS) {
-                throw new \RuntimeException('The barrier never opened.');
-            }
-
-            usleep(self::POLL_MICROSECONDS);
-            $waited += self::POLL_MICROSECONDS;
-            clearstatcache();
-        }
     }
 }

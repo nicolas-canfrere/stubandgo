@@ -26,6 +26,22 @@ final class PresentedTokenTest extends TestCase
         self::assertSame(str_repeat('é', 128), PresentedToken::fromString(str_repeat('é', 200))->toString());
     }
 
+    public function testScrubsInvalidUtf8(): void
+    {
+        self::assertSame('a?b', PresentedToken::fromString("a\xFFb")->toString());
+    }
+
+    public function testReplacesNulBytesWithTheReplacementCharacter(): void
+    {
+        self::assertSame("a\u{FFFD}b\u{FFFD}", PresentedToken::fromString("a\0b\0")->toString());
+    }
+
+    public function testTruncatesTheSanitisedString(): void
+    {
+        self::assertSame(str_repeat("\u{FFFD}", 128), PresentedToken::fromString(str_repeat("\0", 200))->toString());
+        self::assertSame(str_repeat('?', 128), PresentedToken::fromString(str_repeat("\xFF", 200))->toString());
+    }
+
     public function testEquals(): void
     {
         self::assertTrue(PresentedToken::fromString('abc')->equals(PresentedToken::fromString('abc')));

@@ -6,6 +6,7 @@ namespace App\Tests\Access\Core\Domain\ValueObject;
 
 use App\Access\Core\Domain\ScanOutcome;
 use App\Access\Core\Domain\ValueObject\ScanResult;
+use App\Shared\Exception\InvalidValueException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -60,5 +61,41 @@ final class ScanResultTest extends TestCase
         self::assertTrue(ScanResult::valid()->equals(ScanResult::valid()));
         self::assertFalse(ScanResult::valid()->equals(ScanResult::unknown()));
         self::assertFalse(ScanResult::wrongEvent()->equals(ScanResult::unknown()));
+    }
+
+    public function testReconstituteRebuildsEachResult(): void
+    {
+        $at = new \DateTimeImmutable('2026-12-31T20:30:00+01:00');
+
+        self::assertEquals(ScanResult::valid(), ScanResult::reconstitute(ScanOutcome::Valid, null));
+        self::assertEquals(ScanResult::wrongEvent(), ScanResult::reconstitute(ScanOutcome::WrongEvent, null));
+        self::assertEquals(ScanResult::unknown(), ScanResult::reconstitute(ScanOutcome::Unknown, null));
+        $alreadyUsed = ScanResult::reconstitute(ScanOutcome::AlreadyUsed, $at);
+        self::assertSame(ScanOutcome::AlreadyUsed, $alreadyUsed->outcome());
+        self::assertNotNull($alreadyUsed->firstUsedAt());
+        self::assertSame('2026-12-31T19:30:00+00:00', $alreadyUsed->firstUsedAt()->format(\DATE_ATOM));
+        self::assertSame('UTC', $alreadyUsed->firstUsedAt()->getTimezone()->getName());
+    }
+
+    /**
+     * @return iterable<string, array{ScanOutcome, \DateTimeImmutable|null}>
+     */
+    public static function inconsistentResults(): iterable
+    {
+        $at = new \DateTimeImmutable('2026-12-31T20:30:00Z');
+
+        yield 'already used without date' => [ScanOutcome::AlreadyUsed, null];
+        yield 'valid with a date' => [ScanOutcome::Valid, $at];
+        yield 'wrong event with a date' => [ScanOutcome::WrongEvent, $at];
+        yield 'unknown with a date' => [ScanOutcome::Unknown, $at];
+    }
+
+    #[DataProvider('inconsistentResults')]
+    public function testReconstituteRejectsAnInconsistentDate(ScanOutcome $outcome, ?\DateTimeImmutable $firstUsedAt): void
+    {
+        $this->expectException(InvalidValueException::class);
+        $this->expectExceptionMessage('Only an already used ticket carries the date of its first use.');
+
+        ScanResult::reconstitute($outcome, $firstUsedAt);
     }
 }
