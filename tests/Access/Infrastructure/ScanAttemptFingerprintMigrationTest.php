@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Access\Infrastructure;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Exception\DriverException;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 use Psr\Log\NullLogger;
@@ -48,7 +49,7 @@ final class ScanAttemptFingerprintMigrationTest extends KernelTestCase
 
         $this->runMigration('up');
 
-        $rows = $this->connection->fetchAllKeyValue('SELECT id, token_fingerprint FROM scan_attempt ORDER BY id');
+        $rows = $this->connection->fetchAllKeyValue("SELECT id, token_fingerprint FROM scan_attempt WHERE event_id = '01J000000000000000000000EV' ORDER BY id");
         self::assertSame(
             [
                 '01J00000000000000000000001' => hash('sha256', 'abc'),
@@ -81,8 +82,19 @@ final class ScanAttemptFingerprintMigrationTest extends KernelTestCase
         self::assertFalse($this->connection->fetchOne("SELECT 1 FROM information_schema.columns WHERE table_name = 'scan_attempt' AND column_name = 'token_fingerprint'"));
     }
 
+    public function testANonFingerprintValueIsRejectedByTheDatabase(): void
+    {
+        $this->expectException(DriverException::class);
+
+        $this->connection->executeStatement(
+            "INSERT INTO scan_attempt (id, event_id, token_fingerprint, outcome, scanned_at) VALUES ('01J00000000000000000000009', '01J000000000000000000000EV', ?, 'unknown', now())",
+            [str_repeat('G', 64)],
+        );
+    }
+
     private function restoreLegacyShape(): void
     {
+        $this->connection->executeStatement('ALTER TABLE scan_attempt DROP CONSTRAINT scan_attempt_token_fingerprint_check');
         $this->connection->executeStatement('ALTER TABLE scan_attempt RENAME COLUMN token_fingerprint TO token');
         $this->connection->executeStatement('ALTER TABLE scan_attempt ALTER COLUMN token TYPE TEXT');
     }

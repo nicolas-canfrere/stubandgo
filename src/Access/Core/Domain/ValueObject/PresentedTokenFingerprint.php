@@ -20,7 +20,7 @@ final readonly class PresentedTokenFingerprint
     {
     }
 
-    public static function fromPresented(string $token): self
+    public static function fromPresented(#[\SensitiveParameter] string $token): self
     {
         return new self(hash('sha256', $token));
     }

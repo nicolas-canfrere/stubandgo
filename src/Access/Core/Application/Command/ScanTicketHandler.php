@@ -46,7 +46,7 @@ final readonly class ScanTicketHandler
         ));
     }
 
-    private function consume(string $token, EventId $eventId, \DateTimeImmutable $now): ScanResult
+    private function consume(#[\SensitiveParameter] string $token, EventId $eventId, \DateTimeImmutable $now): ScanResult
     {
         try {
             $ticketToken = TicketToken::fromString($token);

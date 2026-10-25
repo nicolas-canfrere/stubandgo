@@ -14,6 +14,7 @@ final readonly class ScanTicket implements CommandInterface
     public function __construct(
         public string $scanAttemptId,
         public string $eventId,
+        #[\SensitiveParameter]
         public string $token,
     ) {
     }
