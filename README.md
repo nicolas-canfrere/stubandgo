@@ -132,6 +132,7 @@ Avec RabbitMQ, `messenger:failed:show` donne seulement le nombre de messages (le
 | `make phpstan` | analyse statique (niveau max) |
 | `make cs-check` / `make cs-fix` | style de code |
 | `make deptrac` | règles de dépendances entre couches |
+| `make lint-container` | lint du conteneur de production (alias d'autowiring que l'environnement de test redéfinit) |
 | `make openapi` / `make openapi-check` / `make openapi-lint` | régénérer, vérifier, linter `openapi.yaml` |
 | `make ci` | tous les contrôles |
 

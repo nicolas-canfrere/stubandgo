@@ -8,7 +8,7 @@ COMPOSER = docker run --rm \
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install composer-cli up down console php-sh test crap mutation phpstan cs-check cs-fix lint test-db test-down deptrac openapi openapi-check openapi-lint ci
+.PHONY: help install composer-cli up down console php-sh test crap mutation phpstan cs-check cs-fix lint test-db test-down deptrac lint-container openapi openapi-check openapi-lint ci
 
 help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  %-14s %s\n", $$1, $$2}'
@@ -60,6 +60,9 @@ phpstan: ## Run PHPStan static analysis
 deptrac: ## Check architecture dependencies with Deptrac
 	docker compose -f compose.test.yaml run --rm php vendor/bin/deptrac analyse --fail-on-uncovered --report-uncovered
 
+lint-container: ## Lint the production service container (aliases the test environment redefines)
+	docker compose run --rm --no-deps -e APP_CACHE_DIR=/tmp/lint-container-cache -e APP_LOG_DIR=/tmp/lint-container-log php bin/console lint:container --env=prod --no-debug
+
 cs-check: ## Check coding standards without modifying files
 	docker compose -f compose.test.yaml run --rm php vendor/bin/php-cs-fixer check --diff
 
@@ -84,4 +87,4 @@ openapi-check: ## Fail if openapi.yaml is not up to date with the code
 openapi-lint: ## Lint openapi.yaml with Redocly CLI
 	docker run --rm --user $$(id -u):$$(id -g) --volume $$PWD:/spec --workdir /spec redocly/cli:$(REDOCLY_VERSION) lint openapi.yaml
 
-ci: cs-check phpstan deptrac openapi-check openapi-lint test crap mutation ## Run every quality gate
+ci: cs-check phpstan deptrac lint-container openapi-check openapi-lint test crap mutation ## Run every quality gate

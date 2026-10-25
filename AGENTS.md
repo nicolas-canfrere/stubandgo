@@ -175,7 +175,10 @@ one because the change looks small.
 
 Before declaring a task done, the whole gate must be green: `make openapi-check`,
 `make openapi-lint`, `make test`, `make crap`, `make mutation`, `make phpstan`,
-`make cs-check` and `make deptrac` (`make ci` runs them all).
+`make cs-check`, `make deptrac` and `make lint-container` (`make ci` runs them
+all). `make lint-container` lints the production container: the test
+environment redefines the bus and repository aliases, so only this target
+exercises the production autowiring.
 
 ## OpenAPI document
 
@@ -238,8 +241,9 @@ Composer runs in the `composer` image pinned by `COMPOSER_VERSION`; use
 - `bin/console debug:router`, `debug:container`, `debug:autowiring <name>`,
   `debug:config <bundle>`, `config:dump-reference <bundle>`: what exists and how
   it is configured.
-- `bin/console lint:container`, plus `lint:twig templates/` and
-  `lint:yaml config/` where those packages are installed: validate before running.
+- `bin/console lint:container` (`make lint-container` for the prod container),
+  plus `lint:twig templates/` and `lint:yaml config/` where those packages are
+  installed: validate before running.
 - `make phpstan` and `make cs-check`: static analysis and coding standards.
 - Read the installed source and docblocks under `vendor/`.
 - Docs: https://symfony.com/doc/current/ (switch to the version matching
