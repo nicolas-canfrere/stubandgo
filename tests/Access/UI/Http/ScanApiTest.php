@@ -190,6 +190,38 @@ final class ScanApiTest extends WebTestCase
     }
 
     /**
+     * @return iterable<string, array{string|null, string|null}>
+     */
+    public static function anonymousRequestsTheApiMustNotInspect(): iterable
+    {
+        yield 'body that is not JSON' => [null, '{"token":'];
+        yield 'body without token' => [null, '{}'];
+        yield 'event identifier that is not a ULID' => ['not-a-ulid', null];
+    }
+
+    /**
+     * Authentication runs before the body is mapped and before the event identifier is checked: an anonymous
+     * caller learns nothing about its request but the missing credentials.
+     *
+     * @param string|null $event raw event identifier of the URL, null for a Rock Asso event
+     * @param string|null $body  raw request body, null for the token of an admission right
+     */
+    #[DataProvider('anonymousRequestsTheApiMustNotInspect')]
+    public function testScanWithoutAccessTokenIsUnauthorizedBeforeTheRequestIsValidated(?string $event, ?string $body): void
+    {
+        ['token' => $token] = $this->issueAdmissionRight($this->rockEventId);
+
+        $this->client->request('POST', '/api/events/' . ($event ?? $this->rockEventId) . '/scans', server: $this->headers(null), content: $body ?? json_encode(['token' => $token], \JSON_THROW_ON_ERROR));
+        $problem = $this->decode();
+
+        self::assertResponseStatusCodeSame(401);
+        self::assertResponseHeaderSame('WWW-Authenticate', 'Bearer');
+        self::assertSame('/problems/unauthorized', $problem['type'] ?? null);
+        $this->assertNothingRecorded($token);
+        self::assertLoggedAsRejection();
+    }
+
+    /**
      * @return iterable<string, array{string, array<string, mixed>}>
      */
     public static function forbiddenScans(): iterable
