@@ -5,6 +5,14 @@ framework:
     # Note that the session will be started ONLY if you read or write from it.
     session: true
 
+    # Keycloak admin API, reached from the Docker network. Nothing is requested at container build.
+    http_client:
+        scoped_clients:
+            keycloak.admin.client:
+                base_uri: '%env(KEYCLOAK_INTERNAL_URL)%'
+                timeout: 5
+                max_duration: 15
+
     #esi: true
     #fragments: true
 

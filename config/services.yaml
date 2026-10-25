@@ -61,6 +61,9 @@ services:
         tags:
             - { name: messenger.message_handler, bus: event.bus }
 
+    App\Catalog\Core\Domain\OrganizationDirectoryInterface:
+        alias: App\Catalog\Infrastructure\Keycloak\KeycloakOrganizationDirectory
+
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
 
