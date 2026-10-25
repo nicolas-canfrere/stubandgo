@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Tests\Shared\Infrastructure\Http;
 
 use App\Shared\Infrastructure\Http\ProblemDetailsListener;
+use App\Tests\Shared\Infrastructure\Observability\LogRecordsTrait;
+use Monolog\Level;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\HttpFoundation\Request;
@@ -19,6 +21,8 @@ use Symfony\Component\Validator\Exception\ValidationFailedException;
 
 final class ProblemDetailsListenerTest extends WebTestCase
 {
+    use LogRecordsTrait;
+
     public function testNotFoundExceptionIsRenderedAsProblemDetails(): void
     {
         $this->assertProblem('/_test/not-found', 404, [
@@ -86,6 +90,7 @@ final class ProblemDetailsListenerTest extends WebTestCase
             'detail' => 'No route found for "POST http://localhost/api/events": Method Not Allowed (Allow: GET)',
             'instance' => '/api/events',
         ], json_decode((string) $client->getResponse()->getContent(), true));
+        self::assertLoggedAsRejection();
     }
 
     public function testUnexpectedExceptionIsRenderedAsGenericProblemDetails(): void
@@ -104,6 +109,7 @@ final class ProblemDetailsListenerTest extends WebTestCase
             'instance' => '/_test/crash',
         ], json_decode($content, true));
         self::assertStringNotContainsString('secret internals', $content);
+        self::assertSame([Level::Critical], self::uncaughtExceptionLevels());
     }
 
     public function testHttpExceptionTypeIsSnakeCasedReasonPhrase(): void
@@ -218,5 +224,6 @@ final class ProblemDetailsListenerTest extends WebTestCase
         self::assertResponseStatusCodeSame($status);
         self::assertResponseHeaderSame('Content-Type', 'application/problem+json');
         self::assertSame($expected, json_decode((string) $client->getResponse()->getContent(), true));
+        self::assertLoggedAsRejection();
     }
 }

@@ -8,6 +8,22 @@ framework:
     #esi: true
     #fragments: true
 
+    # Log levels of Symfony's error listener (first matching class wins, matched with instanceof).
+    # A business rejection or a refused request is a warning; anything else stays critical.
+    exceptions:
+        App\Shared\Exception\AbstractDomainException:
+            log_level: warning
+        Symfony\Component\HttpKernel\Exception\BadRequestHttpException:
+            log_level: warning
+        Symfony\Component\HttpKernel\Exception\NotFoundHttpException:
+            log_level: warning
+        Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException:
+            log_level: warning
+        Symfony\Component\HttpKernel\Exception\UnsupportedMediaTypeHttpException:
+            log_level: warning
+        Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException:
+            log_level: warning
+
 when@test:
     framework:
         test: true

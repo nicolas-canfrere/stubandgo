@@ -8,6 +8,7 @@ use App\Shared\Identity\EventId;
 use App\Shared\Identity\OrderId;
 use App\Shared\Identity\PriceTierId;
 use App\Tests\Catalog\CatalogFixturesTrait;
+use App\Tests\Shared\Infrastructure\Observability\LogRecordsTrait;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -19,6 +20,7 @@ final class SalesApiTest extends WebTestCase
 {
     use CatalogFixturesTrait;
     use ClockSensitiveTrait;
+    use LogRecordsTrait;
 
     private const string ACCEPTED_CARD = '4242424242424242';
     private const string DECLINED_CARD = '4000000000000002';
@@ -148,6 +150,7 @@ final class SalesApiTest extends WebTestCase
             self::assertIsString($violation['message']);
             self::assertNotSame('', $violation['message']);
         }
+        self::assertLoggedAsRejection();
     }
 
     public function testMalformedJsonReturns400(): void
@@ -157,6 +160,17 @@ final class SalesApiTest extends WebTestCase
         self::assertResponseStatusCodeSame(400);
         self::assertResponseHeaderSame('Content-Type', 'application/problem+json');
         self::assertSame('/problems/bad_request', $this->decode()['type'] ?? null);
+        self::assertLoggedAsRejection();
+    }
+
+    public function testNonJsonPayloadReturns415(): void
+    {
+        $this->client->request('POST', '/api/orders', server: ['CONTENT_TYPE' => 'text/plain'], content: 'hello');
+
+        self::assertResponseStatusCodeSame(415);
+        self::assertResponseHeaderSame('Content-Type', 'application/problem+json');
+        self::assertSame('/problems/unsupported_media_type', $this->decode()['type'] ?? null);
+        self::assertLoggedAsRejection();
     }
 
     public function testPaymentWith4242ReturnsPaid(): void
@@ -218,6 +232,7 @@ final class SalesApiTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(409);
         self::assertSame('/problems/order_not_pending', $this->decode()['type'] ?? null);
+        self::assertLoggedAsRejection();
     }
 
     public function testPayingUnknownOrderReturns404(): void
@@ -234,6 +249,7 @@ final class SalesApiTest extends WebTestCase
         self::assertResponseStatusCodeSame(422);
         self::assertSame('/problems/invalid_value', $this->decode()['type'] ?? null);
         self::assertStringNotContainsString('1234', (string) $this->client->getResponse()->getContent());
+        self::assertLoggedAsRejection();
     }
 
     public function testMissingCardReturnsValidationProblem(): void
@@ -289,6 +305,7 @@ final class SalesApiTest extends WebTestCase
         self::assertIsArray($problem);
         self::assertSame('/problems/order_not_found', $problem['type']);
         self::assertSame('/api/orders/' . $orderId, $problem['instance']);
+        self::assertLoggedAsRejection();
     }
 
     public function testAvailabilityReflectsReservation(): void
@@ -366,6 +383,7 @@ final class SalesApiTest extends WebTestCase
         self::assertSame('/problems/' . $code, $problem['type']);
         self::assertSame($status, $problem['status']);
         self::assertSame($uri, $problem['instance']);
+        self::assertLoggedAsRejection();
     }
 
     private function uniqueEmail(): string
