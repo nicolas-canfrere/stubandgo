@@ -7,7 +7,7 @@ namespace App\Tests\Access\Infrastructure;
 use App\Access\Core\Domain\Exception\ScanAttemptNotFoundException;
 use App\Access\Core\Domain\ScanAttempt;
 use App\Access\Core\Domain\ScanAttemptRepositoryInterface;
-use App\Access\Core\Domain\ValueObject\PresentedToken;
+use App\Access\Core\Domain\ValueObject\PresentedTokenFingerprint;
 use App\Access\Core\Domain\ValueObject\ScanAttemptId;
 use App\Access\Core\Domain\ValueObject\ScanResult;
 use App\Shared\Identity\EventId;
@@ -41,7 +41,7 @@ final class DbalScanAttemptRepositoryTest extends KernelTestCase
         $attempt = ScanAttempt::record(
             ScanAttemptId::generate(),
             EventId::generate(),
-            PresentedToken::fromString("t\0k\u{e9}n"),
+            PresentedTokenFingerprint::fromPresented("t\0k\u{e9}n"),
             $result,
             new \DateTimeImmutable('2026-10-24T14:00:00.123456+02:00'),
         );
@@ -56,7 +56,7 @@ final class DbalScanAttemptRepositoryTest extends KernelTestCase
         $attempt = ScanAttempt::record(
             ScanAttemptId::generate(),
             EventId::generate(),
-            PresentedToken::fromString('abc'),
+            PresentedTokenFingerprint::fromPresented('abc'),
             ScanResult::alreadyUsed(new \DateTimeImmutable('2026-10-24T13:00:00+01:00')),
             new \DateTimeImmutable('2026-10-24T14:00:00+02:00'),
         );
@@ -64,16 +64,33 @@ final class DbalScanAttemptRepositoryTest extends KernelTestCase
         $this->attempts->save($attempt);
 
         $row = self::getContainer()->get(Connection::class)->fetchAssociative(
-            "SELECT event_id, token, outcome, to_char(first_used_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS') AS first_used_at, to_char(scanned_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS') AS scanned_at FROM scan_attempt WHERE id = ?",
+            "SELECT event_id, token_fingerprint, outcome, to_char(first_used_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS') AS first_used_at, to_char(scanned_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS') AS scanned_at FROM scan_attempt WHERE id = ?",
             [$attempt->id()->toString()],
         );
         self::assertSame([
             'event_id' => $attempt->eventId()->toString(),
-            'token' => 'abc',
+            'token_fingerprint' => hash('sha256', 'abc'),
             'outcome' => 'already_used',
             'first_used_at' => '2026-10-24 12:00:00',
             'scanned_at' => '2026-10-24 12:00:00',
         ], $row);
+    }
+
+    public function testTheStoredFingerprintIsReadBackAsIs(): void
+    {
+        $attempt = ScanAttempt::record(
+            ScanAttemptId::generate(),
+            EventId::generate(),
+            PresentedTokenFingerprint::fromPresented('abc'),
+            ScanResult::unknown(),
+            new \DateTimeImmutable('2026-10-24T14:00:00+02:00'),
+        );
+        $this->attempts->save($attempt);
+        $connection = self::getContainer()->get(Connection::class);
+        $stored = str_repeat('0123456789abcdef', 4);
+        $connection->executeStatement('UPDATE scan_attempt SET token_fingerprint = ? WHERE id = ?', [$stored, $attempt->id()->toString()]);
+
+        self::assertSame($stored, $this->attempts->get($attempt->id())->tokenFingerprint()->toString());
     }
 
     public function testGetUnknownAttemptFails(): void

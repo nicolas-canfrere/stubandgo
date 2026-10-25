@@ -85,14 +85,43 @@ final class ScanApiTest extends WebTestCase
         self::assertSame(1, $this->connection()->fetchOne('SELECT COUNT(*) FROM scan_attempt WHERE event_id = ?', [$eventId]));
     }
 
-    public function testNulCharacterIsRecordedAsTheReplacementCharacter(): void
+    public function testNulCharacterIsFingerprintedLikeAnyOtherByte(): void
     {
         $eventId = EventId::generate()->toString();
 
         $this->client->request('POST', '/api/events/' . $eventId . '/scans', server: ['CONTENT_TYPE' => 'application/json'], content: '{"token": "a\u0000b"}');
 
         self::assertResponseStatusCodeSame(200);
-        self::assertSame("a\u{FFFD}b", $this->connection()->fetchOne('SELECT token FROM scan_attempt WHERE event_id = ?', [$eventId]));
+        self::assertSame(hash('sha256', "a\0b"), $this->connection()->fetchOne('SELECT token_fingerprint FROM scan_attempt WHERE event_id = ?', [$eventId]));
+    }
+
+    public function testWrongEventScanLogsTheFingerprintNeverTheStillValidToken(): void
+    {
+        ['token' => $token] = $this->issueAdmissionRight();
+        $eventId = EventId::generate()->toString();
+
+        $this->scan($eventId, ['token' => $token]);
+
+        $this->assertOnlyTheFingerprintIsLogged($eventId, $token, 'wrong_event');
+    }
+
+    public function testValidScanLogsTheFingerprintNeverTheToken(): void
+    {
+        ['eventId' => $eventId, 'token' => $token] = $this->issueAdmissionRight();
+
+        $this->scan($eventId, ['token' => $token]);
+
+        $this->assertOnlyTheFingerprintIsLogged($eventId, $token, 'valid');
+    }
+
+    public function testUnknownScanLogsTheFingerprintNeverTheToken(): void
+    {
+        $token = $this->unknownToken();
+        $eventId = EventId::generate()->toString();
+
+        $this->scan($eventId, ['token' => $token]);
+
+        $this->assertOnlyTheFingerprintIsLogged($eventId, $token, 'unknown');
     }
 
     /**
@@ -151,6 +180,18 @@ final class ScanApiTest extends WebTestCase
         $description = $this->docNode($operation, 'description');
         self::assertIsString($description);
         self::assertStringContainsString('not protected in L1', $description);
+    }
+
+    private function assertOnlyTheFingerprintIsLogged(string $eventId, string $token, string $outcome): void
+    {
+        $rows = $this->connection()->fetchAllAssociative('SELECT * FROM scan_attempt WHERE event_id = ?', [$eventId]);
+
+        self::assertCount(1, $rows);
+        self::assertSame($outcome, $rows[0]['outcome']);
+        self::assertSame(hash('sha256', $token), $rows[0]['token_fingerprint']);
+        foreach ($rows[0] as $column => $value) {
+            self::assertStringNotContainsString($token, \is_string($value) ? $value : '', \sprintf('Column "%s" holds the presented token.', $column));
+        }
     }
 
     /**

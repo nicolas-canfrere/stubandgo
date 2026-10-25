@@ -7,7 +7,7 @@ namespace App\Access\Core\Application\Command;
 use App\Access\Core\Domain\AdmissionRightRepositoryInterface;
 use App\Access\Core\Domain\ScanAttempt;
 use App\Access\Core\Domain\ScanAttemptRepositoryInterface;
-use App\Access\Core\Domain\ValueObject\PresentedToken;
+use App\Access\Core\Domain\ValueObject\PresentedTokenFingerprint;
 use App\Access\Core\Domain\ValueObject\ScanAttemptId;
 use App\Access\Core\Domain\ValueObject\ScanResult;
 use App\Access\Core\Domain\ValueObject\TicketToken;
@@ -40,7 +40,7 @@ final readonly class ScanTicketHandler
         $this->scanAttempts->save(ScanAttempt::record(
             $id,
             $eventId,
-            PresentedToken::fromString($command->token),
+            PresentedTokenFingerprint::fromPresented($command->token),
             $this->consume($command->token, $eventId, $now),
             $now,
         ));

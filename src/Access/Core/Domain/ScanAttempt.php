@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Access\Core\Domain;
 
-use App\Access\Core\Domain\ValueObject\PresentedToken;
+use App\Access\Core\Domain\ValueObject\PresentedTokenFingerprint;
 use App\Access\Core\Domain\ValueObject\ScanAttemptId;
 use App\Access\Core\Domain\ValueObject\ScanResult;
 use App\Shared\Identity\EventId;
@@ -17,7 +17,7 @@ final readonly class ScanAttempt
     private function __construct(
         private ScanAttemptId $id,
         private EventId $eventId,
-        private PresentedToken $presentedToken,
+        private PresentedTokenFingerprint $tokenFingerprint,
         private ScanResult $result,
         private \DateTimeImmutable $scannedAt,
     ) {
@@ -26,11 +26,11 @@ final readonly class ScanAttempt
     public static function record(
         ScanAttemptId $id,
         EventId $eventId,
-        PresentedToken $presentedToken,
+        PresentedTokenFingerprint $tokenFingerprint,
         ScanResult $result,
         \DateTimeImmutable $scannedAt,
     ): self {
-        return new self($id, $eventId, $presentedToken, $result, $scannedAt->setTimezone(new \DateTimeZone('UTC')));
+        return new self($id, $eventId, $tokenFingerprint, $result, $scannedAt->setTimezone(new \DateTimeZone('UTC')));
     }
 
     public function id(): ScanAttemptId
@@ -43,9 +43,9 @@ final readonly class ScanAttempt
         return $this->eventId;
     }
 
-    public function presentedToken(): PresentedToken
+    public function tokenFingerprint(): PresentedTokenFingerprint
     {
-        return $this->presentedToken;
+        return $this->tokenFingerprint;
     }
 
     public function result(): ScanResult

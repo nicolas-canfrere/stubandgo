@@ -106,17 +106,17 @@ final class ScanTicketTest extends KernelTestCase
         }
 
         $rows = self::getContainer()->get(Connection::class)->fetchAllAssociative(
-            "SELECT token, outcome, to_char(first_used_at AT TIME ZONE 'UTC', 'HH24:MI:SS') AS first_used_at, to_char(scanned_at AT TIME ZONE 'UTC', 'HH24:MI:SS') AS scanned_at
+            "SELECT token_fingerprint, outcome, to_char(first_used_at AT TIME ZONE 'UTC', 'HH24:MI:SS') AS first_used_at, to_char(scanned_at AT TIME ZONE 'UTC', 'HH24:MI:SS') AS scanned_at
              FROM scan_attempt WHERE event_id = ? ORDER BY scanned_at",
             [$eventId],
         );
         self::assertSame([
-            ['token' => $token, 'outcome' => 'valid', 'first_used_at' => null, 'scanned_at' => '19:00:00'],
-            ['token' => $token, 'outcome' => 'already_used', 'first_used_at' => '19:00:00', 'scanned_at' => '19:00:01'],
-            ['token' => $otherEventToken, 'outcome' => 'wrong_event', 'first_used_at' => null, 'scanned_at' => '19:00:02'],
-            ['token' => $unknown, 'outcome' => 'unknown', 'first_used_at' => null, 'scanned_at' => '19:00:03'],
-            ['token' => "x\u{FFFD}y", 'outcome' => 'unknown', 'first_used_at' => null, 'scanned_at' => '19:00:04'],
-            ['token' => str_repeat('b', 128), 'outcome' => 'unknown', 'first_used_at' => null, 'scanned_at' => '19:00:05'],
+            ['token_fingerprint' => hash('sha256', $token), 'outcome' => 'valid', 'first_used_at' => null, 'scanned_at' => '19:00:00'],
+            ['token_fingerprint' => hash('sha256', $token), 'outcome' => 'already_used', 'first_used_at' => '19:00:00', 'scanned_at' => '19:00:01'],
+            ['token_fingerprint' => hash('sha256', $otherEventToken), 'outcome' => 'wrong_event', 'first_used_at' => null, 'scanned_at' => '19:00:02'],
+            ['token_fingerprint' => hash('sha256', $unknown), 'outcome' => 'unknown', 'first_used_at' => null, 'scanned_at' => '19:00:03'],
+            ['token_fingerprint' => hash('sha256', "x\0y"), 'outcome' => 'unknown', 'first_used_at' => null, 'scanned_at' => '19:00:04'],
+            ['token_fingerprint' => hash('sha256', $long), 'outcome' => 'unknown', 'first_used_at' => null, 'scanned_at' => '19:00:05'],
         ], $rows);
     }
 

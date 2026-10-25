@@ -79,8 +79,8 @@ final class AccessMetricsProviderTest extends KernelTestCase
     private function scan(string $eventId, string $outcome): void
     {
         $this->connection->executeStatement(
-            "INSERT INTO scan_attempt (id, event_id, token, outcome, scanned_at) VALUES (?, ?, 't', ?, now())",
-            [new Ulid()->toBase32(), $eventId, $outcome],
+            'INSERT INTO scan_attempt (id, event_id, token_fingerprint, outcome, scanned_at) VALUES (?, ?, ?, ?, now())',
+            [new Ulid()->toBase32(), $eventId, hash('sha256', 't'), $outcome],
         );
     }
 
