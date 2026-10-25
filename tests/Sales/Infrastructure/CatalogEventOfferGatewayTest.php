@@ -17,7 +17,7 @@ final class CatalogEventOfferGatewayTest extends TestCase
     {
         $eventId = EventId::generate();
         $tier = PriceTierId::generate()->toString();
-        $provider = new class($eventId->toString(), new EventDisplay('Concert', 'La Cigale', new \DateTimeImmutable('2026-12-31T19:30:00+00:00'), [$tier => 'Plein'], 120)) implements EventDisplayProviderInterface {
+        $provider = new class($eventId->toString(), new EventDisplay('Concert', 'La Cigale', new \DateTimeImmutable('2026-12-31T19:30:00+00:00'), [$tier => 'Plein'], 120, true)) implements EventDisplayProviderInterface {
             public function __construct(private readonly string $id, private readonly EventDisplay $display)
             {
             }
@@ -33,6 +33,7 @@ final class CatalogEventOfferGatewayTest extends TestCase
         self::assertNotNull($offer);
         self::assertSame(120, $offer->capacity);
         self::assertSame([$tier => 'Plein'], $offer->priceTierLabels);
+        self::assertTrue($offer->onSale);
     }
 
     public function testAnUnknownEventHasNoOffer(): void

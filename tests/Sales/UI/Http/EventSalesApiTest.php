@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Sales\UI\Http;
 
+use App\Catalog\Core\Application\Command\ReviseEvent;
+use App\Catalog\Core\Application\Command\UnpublishEvent;
 use App\Sales\Core\Application\Command\ExpireOrder;
 use App\Shared\Identity\PriceTierId;
 use App\Tests\Catalog\CatalogFixturesTrait;
@@ -162,6 +164,19 @@ final class EventSalesApiTest extends WebTestCase
         self::assertResponseStatusCodeSame(200);
         self::assertSame(80, $body['seatsRemaining'] ?? null);
         self::assertSame(0, $body['ticketsSold'] ?? null);
+    }
+
+    public function testAnUnpublishedEventShowsItsRevisedCapacityBeforeItIsPublishedAgain(): void
+    {
+        $plein = PriceTierId::generate()->toString();
+        $eventId = $this->createEvent($this->organization['id'], self::FUTURE, publish: true, priceTiers: [['id' => $plein, 'label' => 'Plein', 'priceCents' => 2500]], capacity: 80);
+        $this->command(new UnpublishEvent($eventId));
+        $this->command(new ReviseEvent($eventId, 'Concert', 'Un super concert', 'La Cigale', self::FUTURE, 120, [['id' => $plein, 'label' => 'Plein', 'priceCents' => 2500]]));
+
+        $body = $this->get($eventId, $this->adminToken());
+
+        self::assertResponseStatusCodeSame(200);
+        self::assertSame(120, $body['seatsRemaining'] ?? null);
     }
 
     public function testApiDocDescribesTheSalesRoute(): void

@@ -69,7 +69,15 @@ final class PublishedLanguageTest extends AbstractCatalogTestCase
             new \DateTimeImmutable('2026-12-01T19:00:00+00:00'),
             [$plein => 'Plein', $reduit => 'Réduit'],
             100,
+            false,
         ), $display);
+    }
+
+    public function testDisplayTellsWhetherTheEventIsPublished(): void
+    {
+        $eventId = $this->createEvent($this->createOrganization()['id'], '2026-12-01T20:00:00+01:00', publish: true);
+
+        self::assertTrue(self::getContainer()->get(EventDisplayProviderInterface::class)->forEvent($eventId)?->published);
     }
 
     public function testDisplayReturnsNullForUnknownEvent(): void

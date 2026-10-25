@@ -20,6 +20,7 @@ final readonly class DbalEventSalesReadModel implements EventSalesReadModelInter
         $id = $eventId->toString();
         [$total, $commission, $net] = $this->paidAmounts($id);
         $byPriceTier = $this->paidByPriceTier($id);
+        [$remaining, $taken] = $this->seats($id);
 
         return new EventSalesFigures(
             array_sum(array_column($byPriceTier, 'ticketsSold')),
@@ -27,7 +28,8 @@ final readonly class DbalEventSalesReadModel implements EventSalesReadModelInter
             $commission,
             $net,
             $byPriceTier,
-            $this->seatsRemaining($id),
+            $remaining,
+            $taken,
         );
     }
 
@@ -73,11 +75,20 @@ final readonly class DbalEventSalesReadModel implements EventSalesReadModelInter
         return $byPriceTier;
     }
 
-    private function seatsRemaining(string $eventId): ?int
+    /**
+     * @return array{int|null, int} seats remaining (null without seat stock) and seats taken (0 without seat stock)
+     */
+    private function seats(string $eventId): array
     {
-        $remaining = $this->connection->fetchOne('SELECT capacity - taken FROM seat_stock WHERE event_id = :id', ['id' => $eventId]);
-        \assert(\is_int($remaining) || false === $remaining);
+        $seats = $this->connection->fetchNumeric('SELECT capacity - taken, taken FROM seat_stock WHERE event_id = :id', ['id' => $eventId]);
 
-        return false === $remaining ? null : $remaining;
+        if (false === $seats) {
+            return [null, 0];
+        }
+
+        [$remaining, $taken] = $seats;
+        \assert(\is_int($remaining) && \is_int($taken));
+
+        return [$remaining, $taken];
     }
 }

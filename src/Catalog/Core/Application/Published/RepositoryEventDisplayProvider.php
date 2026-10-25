@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Catalog\Core\Application\Published;
 
 use App\Catalog\Core\Domain\EventRepositoryInterface;
+use App\Catalog\Core\Domain\EventStatus;
 use App\Shared\Identity\EventId;
 
 final readonly class RepositoryEventDisplayProvider implements EventDisplayProviderInterface
@@ -26,6 +27,6 @@ final readonly class RepositoryEventDisplayProvider implements EventDisplayProvi
             $labels[$tier->id()->toString()] = $tier->label()->toString();
         }
 
-        return new EventDisplay($event->title()->toString(), $event->venue()->toString(), $event->startsAt(), $labels, $event->capacity()->toInt());
+        return new EventDisplay($event->title()->toString(), $event->venue()->toString(), $event->startsAt(), $labels, $event->capacity()->toInt(), EventStatus::Published === $event->status());
     }
 }

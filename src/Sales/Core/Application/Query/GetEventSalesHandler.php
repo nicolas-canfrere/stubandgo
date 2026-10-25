@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Sales\Core\Application\Query;
 
+use App\Sales\Core\Domain\EventOffer;
 use App\Sales\Core\Domain\EventOfferGatewayInterface;
+use App\Sales\Core\Domain\EventSalesFigures;
 use App\Sales\Core\Domain\EventSalesReadModelInterface;
 use App\Sales\Core\Domain\Exception\EventNotOnSaleException;
 use App\Shared\Identity\EventId;
@@ -31,12 +33,21 @@ final readonly class GetEventSalesHandler
 
         return new EventSalesView(
             $eventId->toString(),
-            $figures->seatsRemaining ?? $offer->capacity,
+            self::seatsRemaining($offer, $figures),
             $figures->ticketsSold,
             $figures->totalCents,
             $figures->commissionCents,
             $figures->netCents,
             $priceTiers,
         );
+    }
+
+    /**
+     * On sale, the seat stock decides. Off sale, the stock keeps the capacity of the last publication, which a revision
+     * may have changed since: the capacity of the catalog counts, minus the seats still taken.
+     */
+    private static function seatsRemaining(EventOffer $offer, EventSalesFigures $figures): int
+    {
+        return $offer->onSale ? $figures->seatsRemaining ?? $offer->capacity : $offer->capacity - $figures->seatsTaken;
     }
 }

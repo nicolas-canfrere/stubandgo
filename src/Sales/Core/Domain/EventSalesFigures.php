@@ -11,7 +11,8 @@ final readonly class EventSalesFigures
 {
     /**
      * @param array<string, array{ticketsSold: int, totalCents: int}> $byPriceTier sales by price tier identifier, only for tiers that sold
-     * @param int|null                                                $seatsRemaining seats still free, null when the event has no seat stock (never published)
+     * @param int|null                                                $seatsRemaining seats still free in the seat stock, null when the event has no seat stock (never published)
+     * @param int                                                     $seatsTaken     seats held by pending or paid orders, 0 without seat stock
      */
     public function __construct(
         public int $ticketsSold,
@@ -20,6 +21,7 @@ final readonly class EventSalesFigures
         public int $netCents,
         public array $byPriceTier,
         public ?int $seatsRemaining,
+        public int $seatsTaken,
     ) {
     }
 }

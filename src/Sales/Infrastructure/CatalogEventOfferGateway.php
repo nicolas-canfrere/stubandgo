@@ -22,6 +22,6 @@ final readonly class CatalogEventOfferGateway implements EventOfferGatewayInterf
     {
         $display = $this->provider->forEvent($eventId->toString());
 
-        return null === $display ? null : new EventOffer($display->capacity, $display->priceTierLabels);
+        return null === $display ? null : new EventOffer($display->capacity, $display->priceTierLabels, $display->published);
     }
 }
