@@ -7,6 +7,7 @@ namespace App\Shared\Infrastructure\Http;
 use App\Shared\Exception\AbstractConflictException;
 use App\Shared\Exception\AbstractDomainException;
 use App\Shared\Exception\AbstractNotFoundException;
+use App\Shared\Exception\AbstractUpstreamFailureException;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -91,6 +92,7 @@ final class ProblemDetailsListener
         return match (true) {
             $exception instanceof AbstractNotFoundException => Response::HTTP_NOT_FOUND,
             $exception instanceof AbstractConflictException => Response::HTTP_CONFLICT,
+            $exception instanceof AbstractUpstreamFailureException => Response::HTTP_BAD_GATEWAY,
             default => Response::HTTP_UNPROCESSABLE_ENTITY,
         };
     }

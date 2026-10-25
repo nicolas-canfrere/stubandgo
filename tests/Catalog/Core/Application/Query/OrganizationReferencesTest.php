@@ -60,6 +60,16 @@ final class OrganizationReferencesTest extends TestCase
             {
                 return $this->organizations[$id->toString()] ?? null;
             }
+
+            public function findBySlug(Slug $slug): ?Organization
+            {
+                throw new \LogicException('Not used.');
+            }
+
+            public function nameExists(OrganizationName $name): bool
+            {
+                throw new \LogicException('Not used.');
+            }
         };
         $references = new OrganizationReferences($repository);
 

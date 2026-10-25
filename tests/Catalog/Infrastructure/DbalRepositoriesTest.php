@@ -11,6 +11,7 @@ use App\Catalog\Core\Domain\Exception\EventNotFoundException;
 use App\Catalog\Core\Domain\Exception\OrganizationNotFoundException;
 use App\Catalog\Core\Domain\Organization;
 use App\Catalog\Core\Domain\OrganizationRepositoryInterface;
+use App\Catalog\Core\Domain\OrganizationStatus;
 use App\Catalog\Core\Domain\PriceTier;
 use App\Catalog\Core\Domain\ValueObject\CommissionRate;
 use App\Catalog\Core\Domain\ValueObject\EventDescription;
@@ -26,6 +27,7 @@ use App\Shared\Identity\PriceTierId;
 use App\Shared\ValueObject\Capacity;
 use Doctrine\DBAL\Connection;
 use Money\Money;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 final class DbalRepositoriesTest extends KernelTestCase
@@ -180,7 +182,7 @@ final class DbalRepositoriesTest extends KernelTestCase
         foreach ([$this->organizations->get($organization->id()), $this->organizations->getBySlug($organization->slug()), $this->organizations->find($organization->id())] as $loaded) {
             self::assertNotNull($loaded);
             self::assertTrue($organization->id()->equals($loaded->id()));
-            self::assertSame('Rock Asso', $loaded->name()->toString());
+            self::assertSame('Rock Asso ' . $organization->id()->toString(), $loaded->name()->toString());
             self::assertTrue($organization->slug()->equals($loaded->slug()));
             self::assertSame(1234, $loaded->commissionRate()->toBasisPoints());
         }
@@ -231,6 +233,78 @@ final class DbalRepositoriesTest extends KernelTestCase
         $this->organization(keycloakId: '0f8c4f8e-3c7a-4b52-9a51-6d1f2b7c0afe');
     }
 
+    public function testNameIsUnique(): void
+    {
+        $organization = $this->organization();
+
+        $this->expectException(\Doctrine\DBAL\Exception\UniqueConstraintViolationException::class);
+
+        $this->organizations->save(Organization::create(OrganizationId::generate(), $organization->name(), Slug::fromString('other-' . strtolower(OrganizationId::generate()->toString())), CommissionRate::fromBasisPoints(0)));
+    }
+
+    public function testStatusRoundTrips(): void
+    {
+        $pending = $this->organization(keycloakId: null);
+        $active = $this->organization(keycloakId: '0f8c4f8e-3c7a-4b52-9a51-6d1f2b7c0a77');
+
+        self::assertSame(OrganizationStatus::PendingKeycloak, $this->organizations->get($pending->id())->status());
+        self::assertSame(OrganizationStatus::Active, $this->organizations->get($active->id())->status());
+        self::assertSame(OrganizationStatus::Active, $this->organizations->getBySlug($active->slug())->status());
+    }
+
+    public function testSavingAgainUpdatesStatusKeycloakIdAndRateOnly(): void
+    {
+        $organization = $this->organization(commission: 1000, keycloakId: null);
+        $organization->activate(KeycloakOrganizationId::fromString('0f8c4f8e-3c7a-4b52-9a51-6d1f2b7c0a78'));
+        $organization->changeCommissionRate(CommissionRate::fromBasisPoints(42));
+
+        $this->organizations->save($organization);
+
+        $loaded = $this->organizations->get($organization->id());
+        self::assertSame(OrganizationStatus::Active, $loaded->status());
+        self::assertSame('0f8c4f8e-3c7a-4b52-9a51-6d1f2b7c0a78', $loaded->keycloakId()?->toString());
+        self::assertSame(42, $loaded->commissionRate()->toBasisPoints());
+        self::assertSame('Rock Asso ' . $organization->id()->toString(), $loaded->name()->toString());
+    }
+
+    public function testFindBySlug(): void
+    {
+        $organization = $this->organization();
+
+        self::assertSame($organization->id()->toString(), $this->organizations->findBySlug($organization->slug())?->id()->toString());
+        self::assertNull($this->organizations->findBySlug(Slug::fromString('nope-' . strtolower(OrganizationId::generate()->toString()))));
+    }
+
+    public function testNameExists(): void
+    {
+        $organization = $this->organization();
+
+        self::assertTrue($this->organizations->nameExists($organization->name()));
+        self::assertFalse($this->organizations->nameExists(OrganizationName::fromString('Nobody ' . OrganizationId::generate()->toString())));
+    }
+
+    #[DataProvider('inconsistentStatuses')]
+    public function testStatusAndKeycloakIdMustAgree(string $status, ?string $keycloakId): void
+    {
+        $this->expectException(\Doctrine\DBAL\Exception\DriverException::class);
+        $this->expectExceptionMessage('SQLSTATE[23514]');
+
+        self::getContainer()->get(Connection::class)->executeStatement(
+            'INSERT INTO organization (id, name, slug, commission_basis_points, status, keycloak_id) VALUES (?, ?, ?, 0, ?, ?)',
+            [OrganizationId::generate()->toString(), 'Broken', 'broken-' . strtolower(OrganizationId::generate()->toString()), $status, $keycloakId],
+        );
+    }
+
+    /**
+     * @return iterable<string, array{string, string|null}>
+     */
+    public static function inconsistentStatuses(): iterable
+    {
+        yield 'active without keycloak id' => ['active', null];
+        yield 'pending with keycloak id' => ['pending_keycloak', '0f8c4f8e-3c7a-4b52-9a51-6d1f2b7c0a79'];
+        yield 'unknown status' => ['archived', null];
+    }
+
     public function testEventRequiresAnExistingOrganization(): void
     {
         $this->expectException(\Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException::class);
@@ -254,7 +328,7 @@ final class DbalRepositoriesTest extends KernelTestCase
     private function organization(int $commission = 1000, ?string $keycloakId = null): Organization
     {
         $id = OrganizationId::generate();
-        $organization = Organization::create($id, OrganizationName::fromString('Rock Asso'), Slug::fromString('org-' . strtolower($id->toString())), CommissionRate::fromBasisPoints($commission), null === $keycloakId ? null : KeycloakOrganizationId::fromString($keycloakId));
+        $organization = Organization::create($id, OrganizationName::fromString('Rock Asso ' . $id->toString()), Slug::fromString('org-' . strtolower($id->toString())), CommissionRate::fromBasisPoints($commission), null === $keycloakId ? null : KeycloakOrganizationId::fromString($keycloakId));
         $this->organizations->save($organization);
 
         return $organization;

@@ -10,20 +10,47 @@ use App\Catalog\Core\Domain\ValueObject\OrganizationName;
 use App\Catalog\Core\Domain\ValueObject\Slug;
 use App\Shared\Identity\OrganizationId;
 
-final readonly class Organization
+final class Organization
 {
     private function __construct(
-        private OrganizationId $id,
-        private OrganizationName $name,
-        private Slug $slug,
+        private readonly OrganizationId $id,
+        private readonly OrganizationName $name,
+        private readonly Slug $slug,
         private CommissionRate $commissionRate,
+        private OrganizationStatus $status,
         private ?KeycloakOrganizationId $keycloakId,
     ) {
     }
 
+    /**
+     * Active when it already exists in Keycloak, pending its provisioning otherwise.
+     */
     public static function create(OrganizationId $id, OrganizationName $name, Slug $slug, CommissionRate $commissionRate, ?KeycloakOrganizationId $keycloakId = null): self
     {
-        return new self($id, $name, $slug, $commissionRate, $keycloakId);
+        return new self($id, $name, $slug, $commissionRate, null === $keycloakId ? OrganizationStatus::PendingKeycloak : OrganizationStatus::Active, $keycloakId);
+    }
+
+    /**
+     * Rebuilds a persisted organization.
+     */
+    public static function reconstitute(OrganizationId $id, OrganizationName $name, Slug $slug, CommissionRate $commissionRate, OrganizationStatus $status, ?KeycloakOrganizationId $keycloakId): self
+    {
+        return new self($id, $name, $slug, $commissionRate, $status, $keycloakId);
+    }
+
+    public function activate(KeycloakOrganizationId $keycloakId): void
+    {
+        if (OrganizationStatus::Active === $this->status) {
+            throw new \LogicException(\sprintf('Organization "%s" is already active.', $this->id->toString()));
+        }
+
+        $this->status = OrganizationStatus::Active;
+        $this->keycloakId = $keycloakId;
+    }
+
+    public function changeCommissionRate(CommissionRate $commissionRate): void
+    {
+        $this->commissionRate = $commissionRate;
     }
 
     public function id(): OrganizationId
@@ -44,6 +71,11 @@ final readonly class Organization
     public function commissionRate(): CommissionRate
     {
         return $this->commissionRate;
+    }
+
+    public function status(): OrganizationStatus
+    {
+        return $this->status;
     }
 
     public function keycloakId(): ?KeycloakOrganizationId

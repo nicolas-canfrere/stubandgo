@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Catalog\Core\Application\Command;
 
+use App\Catalog\Core\Domain\Exception\OrganizationNameTakenException;
+use App\Catalog\Core\Domain\Exception\OrganizationSlugTakenException;
 use App\Catalog\Core\Domain\Organization;
 use App\Catalog\Core\Domain\OrganizationRepositoryInterface;
 use App\Catalog\Core\Domain\ValueObject\CommissionRate;
@@ -20,10 +22,21 @@ final readonly class CreateOrganizationHandler
 
     public function __invoke(CreateOrganization $command): void
     {
+        $name = OrganizationName::fromString($command->name);
+        $slug = Slug::fromString($command->slug);
+
+        if (null !== $this->organizations->findBySlug($slug)) {
+            throw OrganizationSlugTakenException::withSlug($slug);
+        }
+
+        if ($this->organizations->nameExists($name)) {
+            throw OrganizationNameTakenException::withName($name);
+        }
+
         $this->organizations->save(Organization::create(
             OrganizationId::fromString($command->id),
-            OrganizationName::fromString($command->name),
-            Slug::fromString($command->slug),
+            $name,
+            $slug,
             CommissionRate::fromBasisPoints($command->commissionBasisPoints),
             null === $command->keycloakOrganizationId ? null : KeycloakOrganizationId::fromString($command->keycloakOrganizationId),
         ));

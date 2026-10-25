@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Shared\Infrastructure\Fixtures\Http;
 
+use App\Catalog\Core\Domain\Exception\IdentityProviderUnavailableException;
 use App\Tests\Shared\Infrastructure\Fixtures\FixtureConflictException;
 use App\Tests\Shared\Infrastructure\Fixtures\FixtureNotFoundException;
 use App\Tests\Shared\Infrastructure\Fixtures\FixtureOtherException;
@@ -28,6 +29,12 @@ final class FixtureController
     public function domain(): Response
     {
         throw new FixtureOtherException('Thing 42 is invalid.');
+    }
+
+    #[Route('/_test/upstream', methods: 'GET')]
+    public function upstream(): Response
+    {
+        throw IdentityProviderUnavailableException::unreachable();
     }
 
     #[Route('/_test/crash', methods: 'GET')]

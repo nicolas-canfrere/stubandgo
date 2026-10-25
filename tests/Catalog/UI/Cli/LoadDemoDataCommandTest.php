@@ -46,6 +46,11 @@ final class LoadDemoDataCommandTest extends KernelTestCase
             self::getContainer()->get(Connection::class)->fetchAllKeyValue('SELECT slug, keycloak_id FROM organization WHERE slug IN (?, ?)', ['demo-rock-asso', 'demo-theatre-ville']),
         );
 
+        self::assertSame(['active', 'active'], self::getContainer()->get(Connection::class)->fetchFirstColumn(
+            'SELECT status FROM organization WHERE slug IN (?, ?) ORDER BY slug',
+            ['demo-rock-asso', 'demo-theatre-ville'],
+        ));
+
         $rock = $this->catalog('demo-rock-asso');
         $theatre = $this->catalog('demo-theatre-ville');
         self::assertSame('Rock Asso', $rock->name);

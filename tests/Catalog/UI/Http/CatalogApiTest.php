@@ -48,7 +48,7 @@ final class CatalogApiTest extends WebTestCase
             'title' => 'Concert',
             'venue' => 'La Cigale',
             'startsAt' => '2026-12-01T19:00:00Z',
-            'organization' => ['slug' => $organization['slug'], 'name' => 'Rock Asso'],
+            'organization' => ['slug' => $organization['slug'], 'name' => $organization['name']],
         ], $byId[$upcoming]);
         self::assertArrayNotHasKey($draft, $byId);
         self::assertArrayNotHasKey($past, $byId);
@@ -97,10 +97,10 @@ final class CatalogApiTest extends WebTestCase
         self::assertResponseHeaderSame('Content-Type', 'application/json');
         self::assertSame([
             'slug' => $organization['slug'],
-            'name' => 'Rock Asso',
+            'name' => $organization['name'],
             'events' => [
-                ['id' => $first, 'title' => 'First', 'venue' => 'La Cigale', 'startsAt' => '2026-12-01T19:00:00Z', 'organization' => ['slug' => $organization['slug'], 'name' => 'Rock Asso']],
-                ['id' => $second, 'title' => 'Second', 'venue' => 'La Cigale', 'startsAt' => '2026-12-02T19:00:00Z', 'organization' => ['slug' => $organization['slug'], 'name' => 'Rock Asso']],
+                ['id' => $first, 'title' => 'First', 'venue' => 'La Cigale', 'startsAt' => '2026-12-01T19:00:00Z', 'organization' => ['slug' => $organization['slug'], 'name' => $organization['name']]],
+                ['id' => $second, 'title' => 'Second', 'venue' => 'La Cigale', 'startsAt' => '2026-12-02T19:00:00Z', 'organization' => ['slug' => $organization['slug'], 'name' => $organization['name']]],
             ],
         ], $catalog);
     }
@@ -143,7 +143,7 @@ final class CatalogApiTest extends WebTestCase
             'venue' => 'La Cigale',
             'startsAt' => '2026-12-01T19:00:00Z',
             'capacity' => 100,
-            'organization' => ['slug' => $organization['slug'], 'name' => 'Rock Asso'],
+            'organization' => ['slug' => $organization['slug'], 'name' => $organization['name']],
             'priceTiers' => [
                 ['id' => $plein, 'label' => 'Plein', 'priceCents' => 2550],
                 ['id' => $gratuit, 'label' => 'Gratuit', 'priceCents' => 0],

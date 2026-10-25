@@ -85,6 +85,11 @@ when@test:
         App\Catalog\Core\Domain\OrganizationRepositoryInterface:
             alias: App\Catalog\Infrastructure\DbalOrganizationRepository
             public: true
+        App\Tests\Support\Catalog\InMemoryOrganizationDirectory:
+            public: true
+        App\Catalog\Core\Domain\OrganizationDirectoryInterface:
+            alias: App\Tests\Support\Catalog\InMemoryOrganizationDirectory
+            public: true
         App\Catalog\Core\Application\Published\EventSaleTermsProviderInterface:
             alias: App\Catalog\Core\Application\Published\RepositoryEventSaleTermsProvider
             public: true

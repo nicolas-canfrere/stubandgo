@@ -16,7 +16,9 @@ use App\Catalog\Core\Application\Query\PriceTierView;
 use App\Catalog\Core\Domain\Exception\EventAlreadyPublishedException;
 use App\Catalog\Core\Domain\Exception\EventNotFoundException;
 use App\Catalog\Core\Domain\Exception\EventWithoutPriceTierException;
+use App\Catalog\Core\Domain\Exception\OrganizationNameTakenException;
 use App\Catalog\Core\Domain\Exception\OrganizationNotFoundException;
+use App\Catalog\Core\Domain\Exception\OrganizationSlugTakenException;
 use App\Shared\Exception\InvalidValueException;
 use App\Shared\Identity\EventId;
 use App\Shared\Identity\OrganizationId;
@@ -49,7 +51,7 @@ final class CatalogUseCasesTest extends AbstractCatalogTestCase
 
         self::assertSame([$early, $middle, $late], array_map(static fn(EventSummaryView $view): string => $view->eventId, $listed));
         self::assertSame($organization['slug'], $listed[0]->organizationSlug);
-        self::assertSame('Rock Asso', $listed[0]->organizationName);
+        self::assertSame($organization['name'], $listed[0]->organizationName);
         self::assertSame('Early', $listed[0]->title);
         self::assertSame('La Cigale', $listed[0]->venue);
         self::assertEquals(new \DateTimeImmutable('2026-12-01T20:00:00+00:00'), $listed[0]->startsAt);
@@ -126,11 +128,11 @@ final class CatalogUseCasesTest extends AbstractCatalogTestCase
         $catalog = $this->catalogOf($organization['slug']);
 
         self::assertSame($organization['id'], $catalog->organizationId);
-        self::assertSame('Rock Asso', $catalog->name);
+        self::assertSame($organization['name'], $catalog->name);
         self::assertSame($organization['slug'], $catalog->slug);
         self::assertSame([$published], array_map(static fn(EventSummaryView $view): string => $view->eventId, $catalog->events));
         self::assertSame([$organization['slug']], array_map(static fn(EventSummaryView $view): string => $view->organizationSlug, $catalog->events));
-        self::assertSame(['Rock Asso'], array_map(static fn(EventSummaryView $view): string => $view->organizationName, $catalog->events));
+        self::assertSame([$organization['name']], array_map(static fn(EventSummaryView $view): string => $view->organizationName, $catalog->events));
     }
 
     public function testUnknownSlugThrowsOrganizationNotFound(): void
@@ -157,7 +159,7 @@ final class CatalogUseCasesTest extends AbstractCatalogTestCase
         self::assertSame($eventId, $detail->eventId);
         self::assertSame($organization['id'], $detail->organizationId);
         self::assertSame($organization['slug'], $detail->organizationSlug);
-        self::assertSame('Rock Asso', $detail->organizationName);
+        self::assertSame($organization['name'], $detail->organizationName);
         self::assertSame('Concert', $detail->title);
         self::assertSame('Un super concert', $detail->description);
         self::assertSame('La Cigale', $detail->venue);
@@ -251,6 +253,42 @@ final class CatalogUseCasesTest extends AbstractCatalogTestCase
         $this->command(new CreateOrganization($id, 'Rock Asso', 'org-' . strtolower($id), 1000, '0F8C4F8E-3C7A-4B52-9A51-6D1F2B7C0AAA'));
 
         self::assertSame('0f8c4f8e-3c7a-4b52-9a51-6d1f2b7c0aaa', self::getContainer()->get(Connection::class)->fetchOne('SELECT keycloak_id FROM organization WHERE id = ?', [$id]));
+    }
+
+    public function testCreateOrganizationWithoutKeycloakIdIsPending(): void
+    {
+        $organization = $this->createOrganization();
+
+        self::assertSame('pending_keycloak', self::getContainer()->get(Connection::class)->fetchOne('SELECT status FROM organization WHERE id = ?', [$organization['id']]));
+    }
+
+    public function testCreateOrganizationWithKeycloakIdIsActive(): void
+    {
+        $organization = $this->createOrganization(keycloakOrganizationId: '0f8c4f8e-3c7a-4b52-9a51-6d1f2b7c0bb1');
+
+        self::assertSame('active', self::getContainer()->get(Connection::class)->fetchOne('SELECT status FROM organization WHERE id = ?', [$organization['id']]));
+    }
+
+    public function testSlugAlreadyTakenIsAConflict(): void
+    {
+        $existing = $this->createOrganization();
+
+        $this->expectException(OrganizationSlugTakenException::class);
+
+        $this->command(new CreateOrganization(OrganizationId::generate()->toString(), 'Autre nom ' . $existing['id'], $existing['slug'], 1000));
+    }
+
+    public function testNameAlreadyTakenIsAConflict(): void
+    {
+        $existing = $this->createOrganization();
+        $id = OrganizationId::generate()->toString();
+
+        try {
+            $this->command(new CreateOrganization($id, $existing['name'], 'org-' . strtolower($id), 1000));
+            self::fail('The duplicate name must be rejected.');
+        } catch (OrganizationNameTakenException $e) {
+            self::assertSame('organization_name_taken', $e->errorCode());
+        }
     }
 
     public function testCreateOrganizationRejectsMalformedKeycloakId(): void

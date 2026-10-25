@@ -46,6 +46,13 @@ final class ProblemDetailsListenerTest extends WebTestCase
             'detail' => 'Thing 42 conflicts.',
             'instance' => '/_test/conflict',
         ]];
+        yield 'upstream failure' => ['/_test/upstream', 502, [
+            'type' => '/problems/identity_provider_unavailable',
+            'title' => 'Bad Gateway',
+            'status' => 502,
+            'detail' => 'The identity provider is unavailable.',
+            'instance' => '/_test/upstream',
+        ]];
         yield 'other domain exception' => ['/_test/domain', 422, [
             'type' => '/problems/fixture_other',
             'title' => 'Unprocessable Content',

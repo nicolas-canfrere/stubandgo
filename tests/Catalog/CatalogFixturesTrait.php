@@ -37,15 +37,18 @@ trait CatalogFixturesTrait
     }
 
     /**
-     * @return array{id: string, slug: string}
+     * Each organization gets a distinct name, since organization names are unique.
+     *
+     * @return array{id: string, slug: string, name: string}
      */
     protected function createOrganization(int $commissionBasisPoints = 1000, ?string $keycloakOrganizationId = null): array
     {
         $id = OrganizationId::generate()->toString();
         $slug = 'org-' . strtolower($id);
-        $this->command(new CreateOrganization($id, 'Rock Asso', $slug, $commissionBasisPoints, $keycloakOrganizationId));
+        $name = 'Rock Asso ' . $id;
+        $this->command(new CreateOrganization($id, $name, $slug, $commissionBasisPoints, $keycloakOrganizationId));
 
-        return ['id' => $id, 'slug' => $slug];
+        return ['id' => $id, 'slug' => $slug, 'name' => $name];
     }
 
     /**
