@@ -74,15 +74,27 @@ curl -s $A/api/orders/$O2                                        # état de la c
 curl -s http://localhost:8025/api/v1/messages | jq '.messages[] | {Subject, To: [.To[].Address]}'
 ```
 
-L'email contient un QR code par billet (images `ticket-1.png`, `ticket-2.png`). Le QR code encode le jeton du billet ; pour le démontrer sans lecteur de QR code, on le lit en base, puis on le scanne deux fois :
+L'email contient un QR code par billet (images `ticket-1.png`, `ticket-2.png`). Le QR code encode le jeton du billet ; pour le démontrer sans lecteur de QR code, on le lit en base, puis on le scanne deux fois.
+
+Le scan exige le jeton d'accès Keycloak d'un **contrôleur de l'organisation de l'événement** (rôle `organization-controller` du realm `stubandgo`, voir [Keycloak](#keycloak)) : pour « Soirée Rock », `controleur.rock`. Le client `stubandgo-app` n'accepte que le flux code + PKCE : le jeton s'obtient en se connectant au front avec ce compte (c'est le jeton envoyé dans l'en-tête `Authorization` de ses appels de scan), puis :
 
 ```bash
+JWT='<jeton d'accès de controleur.rock>'
 TOKEN=$(docker compose exec -T database psql -U app -d app -At -c \
   "SELECT a.token FROM admission_right a JOIN ticket t ON t.id = a.ticket_id WHERE t.order_id = '$O2' ORDER BY t.id LIMIT 1")
-curl -s -X POST $A/api/events/$E/scans -H 'Content-Type: application/json' -d "{\"token\":\"$TOKEN\"}"
+curl -s -X POST $A/api/events/$E/scans -H "Authorization: Bearer $JWT" -H 'Content-Type: application/json' -d "{\"token\":\"$TOKEN\"}"
 # {"outcome":"valid","firstUsedAt":null}
-curl -s -X POST $A/api/events/$E/scans -H 'Content-Type: application/json' -d "{\"token\":\"$TOKEN\"}"
+curl -s -X POST $A/api/events/$E/scans -H "Authorization: Bearer $JWT" -H 'Content-Type: application/json' -d "{\"token\":\"$TOKEN\"}"
 # {"outcome":"already_used","firstUsedAt":"2026-…Z"}
+```
+
+Sans jeton, le scan répond `401 /problems/unauthorized` ; avec le jeton d'un autre membre (`controleur.theatre`, `admin.rock` qui n'est pas contrôleur, un compte du realm de la plateforme), ou pour un événement inconnu, il répond `403 /problems/forbidden`. Un scan refusé n'est pas enregistré. Un jeton de la plateforme s'obtient en direct avec le client `stubandgo-staff-cli`, mais il ne donne aucun droit en L2 :
+
+```bash
+STAFF_JWT=$(curl -s http://localhost:8180/realms/stubandgo-staff/protocol/openid-connect/token \
+  -d grant_type=password -d client_id=stubandgo-staff-cli -d username=admin.plateforme -d password=stubandgo-demo | jq -r .access_token)
+curl -s -X POST $A/api/events/$E/scans -H "Authorization: Bearer $STAFF_JWT" -H 'Content-Type: application/json' -d "{\"token\":\"$TOKEN\"}"
+# {"type":"/problems/forbidden",…,"status":403,…}
 ```
 
 Cartes de test : `4242424242424242` (acceptée), `4000000000000002` (refusée). Un événement de démonstration, « Concert Intimiste », n'a que 2 places : pratique pour provoquer un `409 sold_out`.
@@ -153,10 +165,11 @@ Les navigateurs parlent à Keycloak par `http://localhost:8180`, l'API par `http
 
 `make help` liste toutes les cibles.
 
-## Limites de L1
+## Limites
 
-- **L'API de scan n'est pas protégée** : n'importe quel client peut scanner un jeton. C'est une limite assumée, levée en L2 avec l'authentification (Keycloak).
-- Pas d'authentification ni d'isolation entre organisations : les organisations et événements sont créés par `app:demo:load`, il n'y a pas de back-office (prévu en L3).
+- Seul le scan exige un jeton (L2) : le catalogue, la commande, le paiement et l'état de commande restent publics, et `/health` et `/metrics` restent ouverts à tout client qui atteint l'API (limite assumée de la L2).
+- Un jeton du realm de la plateforme (`stubandgo-staff`, par exemple obtenu avec `stubandgo-staff-cli`) est accepté par l'API mais ne donne aucun droit en L2.
+- Pas de back-office : les organisations et événements sont créés par `app:demo:load` (prévu en L3).
 - Le paiement est simulé et aucun prestataire réel n'est appelé.
 
 ## Non-objectifs et évolutions possibles

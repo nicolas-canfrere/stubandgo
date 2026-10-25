@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: 'stubandgo public API'
-  description: 'Catalog of organizations and published events, order placement, simulated payment and ticket scanning (not protected in L1). Errors follow RFC 9457 Problem Details.'
+  description: 'Catalog of organizations and published events, order placement, simulated payment and ticket scanning (controllers of the event organization only, with a Keycloak access token). Errors follow RFC 9457 Problem Details.'
   version: 1.0.0
 servers:
   -
@@ -13,7 +13,7 @@ paths:
       tags:
         - Access
       summary: 'Scan a ticket token at the gate of an event.'
-      description: 'Consumes the admission right of the token for the event: only the first scan of a ticket is valid. Every scan is recorded, a malformed token included (outcome "unknown"). This route is not protected in L1: any client may scan.'
+      description: 'Consumes the admission right of the token for the event: only the first scan of a ticket is valid. Every authorized scan is recorded, a malformed token included (outcome "unknown"). Requires the Keycloak access token of a controller (realm role organization-controller) of the organization that owns the event; a refused scan is not recorded.'
       operationId: post_access_scan_ticket
       parameters:
         -
@@ -42,12 +42,27 @@ paths:
                   outcome: { type: string, enum: [valid, already_used, wrong_event, unknown] }
                   firstUsedAt: { description: 'For already_used only, when the ticket was first scanned, in UTC (RFC 3339, Z suffix); null otherwise.', type: string, format: date-time, example: '2026-11-20T19:00:00Z', nullable: true }
                 type: object
-        '422':
-          description: 'Malformed payload (/problems/validation_failed) or event identifier that is not a ULID (/problems/invalid_value); nothing is recorded.'
+        '401':
+          description: 'Access token missing or invalid (/problems/unauthorized, with a WWW-Authenticate: Bearer challenge); nothing is recorded.'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Problem'
+        '403':
+          description: 'The member is not a controller of the organization that owns the event, or the event does not exist or its identifier is not a ULID (/problems/forbidden); nothing is recorded.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: 'Malformed payload (/problems/validation_failed); nothing is recorded.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+        -
+          bearerAuth: []
   '/api/events/{eventId}':
     get:
       tags:
@@ -568,6 +583,11 @@ components:
           items:
             $ref: '#/components/schemas/OrderLineRequest'
       type: object
+  securitySchemes:
+    bearerAuth:
+      type: http
+      bearerFormat: JWT
+      scheme: bearer
 security: []
 tags:
   -

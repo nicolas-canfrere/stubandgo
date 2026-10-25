@@ -25,6 +25,8 @@ framework:
             log_level: warning
         Symfony\Component\HttpKernel\Exception\UnauthorizedHttpException:
             log_level: warning
+        Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException:
+            log_level: warning
 
 when@test:
     framework:

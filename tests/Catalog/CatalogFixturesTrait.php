@@ -39,11 +39,11 @@ trait CatalogFixturesTrait
     /**
      * @return array{id: string, slug: string}
      */
-    protected function createOrganization(int $commissionBasisPoints = 1000): array
+    protected function createOrganization(int $commissionBasisPoints = 1000, ?string $keycloakOrganizationId = null): array
     {
         $id = OrganizationId::generate()->toString();
         $slug = 'org-' . strtolower($id);
-        $this->command(new CreateOrganization($id, 'Rock Asso', $slug, $commissionBasisPoints));
+        $this->command(new CreateOrganization($id, 'Rock Asso', $slug, $commissionBasisPoints, $keycloakOrganizationId));
 
         return ['id' => $id, 'slug' => $slug];
     }

@@ -91,6 +91,9 @@ when@test:
         App\Catalog\Core\Application\Published\EventDisplayProviderInterface:
             alias: App\Catalog\Core\Application\Published\RepositoryEventDisplayProvider
             public: true
+        App\Catalog\Core\Application\Published\EventOrganizationProviderInterface:
+            alias: App\Catalog\Core\Application\Published\RepositoryEventOrganizationProvider
+            public: true
         App\Tests\Catalog\Core\Application\Fixtures\EventPublishedRecorder:
             public: true
         App\Sales\Core\Domain\SeatStockRepositoryInterface:

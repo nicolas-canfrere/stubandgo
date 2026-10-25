@@ -12,10 +12,14 @@ use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Uid\Ulid;
 
 /**
  * The outcome of a scan is a business result, not an error: the route answers 200 whatever the verdict.
+ *
+ * Only a controller of the organization that owns the event may scan (ScanEventVoter of Access.Infrastructure). The
+ * check runs before the dispatch: a refused scan is not an attempt at the gate and is never recorded.
  */
 final readonly class ScanTicketController
 {
@@ -26,10 +30,12 @@ final readonly class ScanTicketController
     }
 
     #[Route('/api/events/{eventId}/scans', name: 'access_scan_ticket', methods: 'POST')]
+    #[IsGranted('ACCESS_SCAN_EVENT', subject: 'eventId')]
     #[OA\Post(
-        description: 'Consumes the admission right of the token for the event: only the first scan of a ticket is valid. Every scan is recorded, a malformed token included (outcome "unknown"). This route is not protected in L1: any client may scan.',
+        description: 'Consumes the admission right of the token for the event: only the first scan of a ticket is valid. Every authorized scan is recorded, a malformed token included (outcome "unknown"). Requires the Keycloak access token of a controller (realm role organization-controller) of the organization that owns the event; a refused scan is not recorded.',
         summary: 'Scan a ticket token at the gate of an event.',
         requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(ref: '#/components/schemas/ScanTicketRequest')),
+        security: [['bearerAuth' => []]],
         tags: ['Access'],
         parameters: [new OA\Parameter(name: 'eventId', description: 'ULID of the event whose gate scans the token.', in: 'path', required: true, schema: new OA\Schema(type: 'string'))],
         responses: [
@@ -45,8 +51,18 @@ final readonly class ScanTicketController
                 ),
             ),
             new OA\Response(
+                response: 401,
+                description: 'Access token missing or invalid (/problems/unauthorized, with a WWW-Authenticate: Bearer challenge); nothing is recorded.',
+                content: new OA\JsonContent(ref: '#/components/schemas/Problem'),
+            ),
+            new OA\Response(
+                response: 403,
+                description: 'The member is not a controller of the organization that owns the event, or the event does not exist or its identifier is not a ULID (/problems/forbidden); nothing is recorded.',
+                content: new OA\JsonContent(ref: '#/components/schemas/Problem'),
+            ),
+            new OA\Response(
                 response: 422,
-                description: 'Malformed payload (/problems/validation_failed) or event identifier that is not a ULID (/problems/invalid_value); nothing is recorded.',
+                description: 'Malformed payload (/problems/validation_failed); nothing is recorded.',
                 content: new OA\JsonContent(ref: '#/components/schemas/Problem'),
             ),
         ],

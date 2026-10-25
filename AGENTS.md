@@ -128,6 +128,12 @@ Europe/Paris happens only for display (front, emails).
   database. Get it with `#[CurrentUser] AuthenticatedMember $member`.
 - 401 is rendered as problem details `/problems/unauthorized` with a
   `WWW-Authenticate: Bearer` challenge (`BearerTokenChallenge`).
+- An authenticated member without the right gets 403 `/problems/forbidden`
+  (Symfony's `AccessDeniedHttpException`, logged as a warning). The scan
+  route asks `#[IsGranted('ACCESS_SCAN_EVENT', subject: 'eventId')]`,
+  decided by `App\Access\Infrastructure\Security\ScanEventVoter` from the
+  Catalog OHS `EventOrganizationProviderInterface`, before the dispatch: a
+  refused scan is never recorded.
 - In a test, sign a token with
   `App\Tests\Support\Security\TestTokenIssuer::issue()` (a Rock Asso
   controller by default; each override replaces a claim, `null` removes it)

@@ -6,6 +6,7 @@ namespace App\Tests\Catalog\Core\Application;
 
 use App\Catalog\Core\Application\Published\EventDisplay;
 use App\Catalog\Core\Application\Published\EventDisplayProviderInterface;
+use App\Catalog\Core\Application\Published\EventOrganizationProviderInterface;
 use App\Catalog\Core\Application\Published\EventSaleTerms;
 use App\Catalog\Core\Application\Published\EventSaleTermsProviderInterface;
 use App\Catalog\Core\Application\Published\PriceTierTerms;
@@ -73,5 +74,35 @@ final class PublishedLanguageTest extends AbstractCatalogTestCase
     public function testDisplayReturnsNullForUnknownEvent(): void
     {
         self::assertNull(self::getContainer()->get(EventDisplayProviderInterface::class)->forEvent(EventId::generate()->toString()));
+    }
+
+    public function testEventOrganizationIsTheKeycloakIdOfItsOrganization(): void
+    {
+        $organization = $this->createOrganization(keycloakOrganizationId: '0F8C4F8E-3C7A-4B52-9A51-6D1F2B7C0A01');
+        $eventId = $this->createEvent($organization['id'], '2026-12-01T20:00:00+01:00');
+
+        self::assertSame('0f8c4f8e-3c7a-4b52-9a51-6d1f2b7c0a01', $this->eventOrganizations()->keycloakOrganizationIdOf($eventId));
+    }
+
+    public function testEventOrganizationIsNullWhenTheOrganizationHasNoKeycloakId(): void
+    {
+        $eventId = $this->createEvent($this->createOrganization()['id'], '2026-12-01T20:00:00+01:00');
+
+        self::assertNull($this->eventOrganizations()->keycloakOrganizationIdOf($eventId));
+    }
+
+    public function testEventOrganizationIsNullForUnknownEvent(): void
+    {
+        self::assertNull($this->eventOrganizations()->keycloakOrganizationIdOf(EventId::generate()->toString()));
+    }
+
+    public function testEventOrganizationIsNullForAnIdentifierThatIsNotAUlid(): void
+    {
+        self::assertNull($this->eventOrganizations()->keycloakOrganizationIdOf('not-a-ulid'));
+    }
+
+    private function eventOrganizations(): EventOrganizationProviderInterface
+    {
+        return self::getContainer()->get(EventOrganizationProviderInterface::class);
     }
 }

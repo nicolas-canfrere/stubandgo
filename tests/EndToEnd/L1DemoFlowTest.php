@@ -8,6 +8,7 @@ use App\Shared\Infrastructure\Observability\CorrelationContext;
 use App\Shared\Infrastructure\Outbox\OutboxRelay;
 use App\Tests\Access\Fixtures\RecordingQrCodeRenderer;
 use App\Tests\Catalog\CatalogFixturesTrait;
+use App\Tests\Support\Security\TestTokenIssuer;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -72,12 +73,14 @@ final class L1DemoFlowTest extends WebTestCase
         $tokens = self::getContainer()->get(RecordingQrCodeRenderer::class)->payloads();
         self::assertCount(2, $tokens);
 
-        $first = $this->json('POST', '/api/events/' . $eventId . '/scans', ['token' => $tokens[0]]);
+        // The gate is held by the controller of Rock Asso, the demo organization of the event.
+        $controller = TestTokenIssuer::issue();
+        $first = $this->json('POST', '/api/events/' . $eventId . '/scans', ['token' => $tokens[0]], $controller);
         self::assertResponseIsSuccessful();
         self::assertSame('valid', $first['outcome']);
         self::assertNull($first['firstUsedAt']);
 
-        $second = $this->json('POST', '/api/events/' . $eventId . '/scans', ['token' => $tokens[0]]);
+        $second = $this->json('POST', '/api/events/' . $eventId . '/scans', ['token' => $tokens[0]], $controller);
         self::assertResponseIsSuccessful();
         self::assertSame('already_used', $second['outcome']);
         self::assertSame('2026-10-24T12:00:00Z', $second['firstUsedAt']);
@@ -131,12 +134,12 @@ final class L1DemoFlowTest extends WebTestCase
      *
      * @return array<array-key, mixed>
      */
-    private function json(string $method, string $uri, ?array $body = null): array
+    private function json(string $method, string $uri, ?array $body = null, ?string $accessToken = null): array
     {
         $this->client->request(
             $method,
             $uri,
-            server: ['CONTENT_TYPE' => 'application/json'],
+            server: ['CONTENT_TYPE' => 'application/json', ...(null === $accessToken ? [] : ['HTTP_AUTHORIZATION' => 'Bearer ' . $accessToken])],
             content: null === $body ? null : json_encode($body, \JSON_THROW_ON_ERROR),
         );
         $decoded = json_decode((string) $this->client->getResponse()->getContent(), true, flags: \JSON_THROW_ON_ERROR);
