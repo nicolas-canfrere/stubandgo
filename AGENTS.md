@@ -151,8 +151,10 @@ Europe/Paris happens only for display (front, emails).
   operations on Keycloak (get-or-create the organization of a slug, invite a
   member), never HTTP calls. Its adapter is
   `App\Catalog\Infrastructure\Keycloak\KeycloakOrganizationDirectory`
-  (service account token cached by `ServiceAccountTokenProvider`); it is
-  tested alone with `MockHttpClient`, every step failing with its
+  (service account token kept by `ServiceAccountTokenProvider` in memory,
+  so for one PHP-FPM request only: every request that calls Keycloak asks
+  for a new token; it is reused within the request until shortly before it
+  expires); it is tested alone with `MockHttpClient`, every step failing with its
   compensation.
 - In the test environment the port is aliased to the in-memory double
   `App\Tests\Support\Catalog\InMemoryOrganizationDirectory`
