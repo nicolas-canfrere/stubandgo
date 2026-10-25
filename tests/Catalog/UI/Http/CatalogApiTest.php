@@ -194,12 +194,39 @@ final class CatalogApiTest extends WebTestCase
         }
     }
 
+    public function testOrganizationReferenceSchemaRequiresSlugAndName(): void
+    {
+        $doc = $this->getJson('/api/doc.json');
+
+        self::assertIsArray($doc);
+        $required = $this->docNode($doc, 'components', 'schemas', 'OrganizationReference', 'required');
+        self::assertIsArray($required);
+        self::assertContains('slug', $required);
+        self::assertContains('name', $required);
+        self::assertSame('string', $this->docNode($doc, 'components', 'schemas', 'OrganizationReference', 'properties', 'name', 'type'));
+    }
+
     public function testSwaggerUiIsServed(): void
     {
         $this->client->request('GET', '/api/doc');
 
         self::assertResponseIsSuccessful();
         self::assertSelectorExists('#swagger-ui');
+    }
+
+    /**
+     * @param array<mixed> $doc
+     */
+    private function docNode(array $doc, string ...$keys): mixed
+    {
+        $node = $doc;
+        foreach ($keys as $key) {
+            self::assertIsArray($node);
+            self::assertArrayHasKey($key, $node);
+            $node = $node[$key];
+        }
+
+        return $node;
     }
 
     private function getJson(string $uri): mixed

@@ -27,7 +27,7 @@ final readonly class GetOrganizationCatalogHandler
         return new OrganizationCatalogView(
             $organization->id()->toString(),
             $organization->name()->toString(),
-            $reference->slug,
+            $organization->slug()->toString(),
             array_map(
                 static fn(Event $event): EventSummaryView => EventSummaryView::fromEvent($event, $reference),
                 $this->events->listPublishedByOrganization($organization->id(), $this->clock->now()),
