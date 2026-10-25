@@ -87,7 +87,8 @@ final readonly class DbalEventSalesReadModel implements EventSalesReadModelInter
         }
 
         [$remaining, $taken] = $seats;
-        \assert(\is_int($remaining) && \is_int($taken));
+        \assert(\is_int($remaining));
+        \assert(\is_int($taken));
 
         return [$remaining, $taken];
     }

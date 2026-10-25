@@ -37,12 +37,18 @@ final readonly class DbalOrganizationRepository implements OrganizationRepositor
 
     public function recordActivation(Organization $organization): void
     {
+        $keycloakId = $organization->keycloakId();
+
+        if (null === $keycloakId) {
+            throw new \LogicException(\sprintf('Organization "%s" is not activated.', $organization->id()->toString()));
+        }
+
         $this->connection->executeStatement(
             "UPDATE organization SET status = :status, keycloak_id = :keycloak WHERE id = :id AND status = 'pending_keycloak'",
             [
                 'id' => $organization->id()->toString(),
                 'status' => $organization->status()->value,
-                'keycloak' => $organization->keycloakId()?->toString(),
+                'keycloak' => $keycloakId->toString(),
             ],
         );
     }

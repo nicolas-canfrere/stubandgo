@@ -465,6 +465,16 @@ final class DbalRepositoriesTest extends KernelTestCase
         self::assertSame('0f8c4f8e-3c7a-4b52-9a51-6d1f2b7c0a81', $this->organizations->get($organization->id())->keycloakId()?->toString());
     }
 
+    public function testRecordingTheActivationOfAPendingOrganizationIsALogicError(): void
+    {
+        $organization = $this->organization(keycloakId: null);
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage(\sprintf('Organization "%s" is not activated.', $organization->id()->toString()));
+
+        $this->organizations->recordActivation($organization);
+    }
+
     public function testCommissionRateChangeWritesTheRateOnly(): void
     {
         $organization = $this->organization(commission: 1000, keycloakId: null);
