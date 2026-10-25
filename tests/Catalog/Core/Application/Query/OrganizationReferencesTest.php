@@ -8,6 +8,7 @@ use App\Catalog\Core\Application\Query\OrganizationReferences;
 use App\Catalog\Core\Domain\Organization;
 use App\Catalog\Core\Domain\OrganizationRepositoryInterface;
 use App\Catalog\Core\Domain\ValueObject\CommissionRate;
+use App\Catalog\Core\Domain\ValueObject\KeycloakOrganizationId;
 use App\Catalog\Core\Domain\ValueObject\OrganizationName;
 use App\Catalog\Core\Domain\ValueObject\Slug;
 use App\Shared\Identity\OrganizationId;
@@ -62,6 +63,11 @@ final class OrganizationReferencesTest extends TestCase
             }
 
             public function findBySlug(Slug $slug): ?Organization
+            {
+                throw new \LogicException('Not used.');
+            }
+
+            public function findByKeycloakId(KeycloakOrganizationId $keycloakId): ?Organization
             {
                 throw new \LogicException('Not used.');
             }

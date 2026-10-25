@@ -71,6 +71,14 @@ final readonly class DbalOrganizationRepository implements OrganizationRepositor
         return false === $row ? null : $this->hydrate($row);
     }
 
+    public function findByKeycloakId(KeycloakOrganizationId $keycloakId): ?Organization
+    {
+        /** @var array{id: string, name: string, slug: string, commission_basis_points: int, keycloak_id: string|null, status: string}|false $row */
+        $row = $this->connection->fetchAssociative('SELECT ' . self::COLUMNS . ' FROM organization WHERE keycloak_id = :keycloak', ['keycloak' => $keycloakId->toString()]);
+
+        return false === $row ? null : $this->hydrate($row);
+    }
+
     public function nameExists(OrganizationName $name): bool
     {
         return false !== $this->connection->fetchOne('SELECT 1 FROM organization WHERE name = :name', ['name' => $name->toString()]);

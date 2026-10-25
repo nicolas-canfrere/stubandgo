@@ -63,6 +63,55 @@ paths:
       security:
         -
           bearerAuth: []
+  /api/backoffice/invitations:
+    post:
+      tags:
+        - Backoffice
+      summary: 'Invite a member into the organization of the caller.'
+      description: 'Requires the Keycloak access token of an administrator of an organization (realm role organization-admin); the organization is the one of the token, never taken from the request. Keycloak sends the invitation email.'
+      operationId: post_catalog_backoffice_invite_member
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InviteMemberRequest'
+      responses:
+        '204':
+          description: 'The invitation was sent.'
+        '401':
+          description: 'Access token missing or invalid (/problems/unauthorized, with a WWW-Authenticate: Bearer challenge).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: 'The member is not an administrator of an organization known to the platform (/problems/forbidden).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: 'The email address is already known to Keycloak (/problems/member_already_exists), or the organization is not provisioned in Keycloak yet (/problems/organization_not_active).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: 'Malformed payload (/problems/validation_failed) or an invalid email address or role (/problems/invalid_value).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '502':
+          description: 'Keycloak is unreachable or refused the request (/problems/identity_provider_unavailable).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+        -
+          bearerAuth: []
   '/api/events/{eventId}':
     get:
       tags:
@@ -271,6 +320,69 @@ paths:
                 $ref: '#/components/schemas/Problem'
         '422':
           description: 'Malformed payload (/problems/validation_failed, with a violations member) or a value that breaks a rule: /problems/invalid_value (name, slug or commission rate).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+        -
+          bearerAuth: []
+  '/api/platform/organizations/{organizationId}/invitations':
+    post:
+      tags:
+        - Platform
+      summary: 'Invite a member into any active organization.'
+      description: 'Requires the Keycloak access token of a platform administrator (staff realm role platform-admin). Keycloak sends the invitation email. This is how the first administrator of an organization is invited.'
+      operationId: post_catalog_platform_invite_member
+      parameters:
+        -
+          name: organizationId
+          in: path
+          description: 'ULID of the organization.'
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InviteMemberRequest'
+      responses:
+        '204':
+          description: 'The invitation was sent.'
+        '401':
+          description: 'Access token missing or invalid (/problems/unauthorized, with a WWW-Authenticate: Bearer challenge).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: 'The member is not a platform administrator (/problems/forbidden).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: 'No organization has this identifier (/problems/organization_not_found).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: 'The email address is already known to Keycloak (/problems/member_already_exists), or the organization is not provisioned in Keycloak yet (/problems/organization_not_active).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: 'Malformed payload (/problems/validation_failed) or an invalid email address or role (/problems/invalid_value).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '502':
+          description: 'Keycloak is unreachable or refused the request (/problems/identity_provider_unavailable).'
           content:
             application/json:
               schema:
@@ -762,6 +874,23 @@ components:
           type: string
           example: gKLhZN-ot9fBxtYtPWJNQkFE2j03nIhf5Rfh3Q52pww
       type: object
+    InviteMemberRequest:
+      required:
+        - email
+        - role
+      properties:
+        email:
+          description: 'Email address of the invited member; it must not belong to a Keycloak user yet.'
+          type: string
+          example: nouveau@rock-asso.test
+        role:
+          description: 'Role of the invited member in the organization.'
+          type: string
+          example: controller
+          enum:
+            - admin
+            - controller
+      type: object
     ChangeCommissionRateRequest:
       required:
         - commissionBasisPoints
@@ -835,6 +964,9 @@ tags:
   -
     name: Access
     description: Access
+  -
+    name: Backoffice
+    description: Backoffice
   -
     name: Catalog
     description: Catalog

@@ -275,6 +275,16 @@ final class DbalRepositoriesTest extends KernelTestCase
         self::assertNull($this->organizations->findBySlug(Slug::fromString('nope-' . strtolower(OrganizationId::generate()->toString()))));
     }
 
+    public function testFindByKeycloakId(): void
+    {
+        $keycloakId = '0f8c4f8e-3c7a-4b52-9a51-6d1f2b7c0a79';
+        $organization = $this->organization(keycloakId: $keycloakId);
+        $this->organization();
+
+        self::assertSame($organization->id()->toString(), $this->organizations->findByKeycloakId(KeycloakOrganizationId::fromString($keycloakId))?->id()->toString());
+        self::assertNull($this->organizations->findByKeycloakId(KeycloakOrganizationId::fromString('0f8c4f8e-3c7a-4b52-9a51-6d1f2b7c0a80')));
+    }
+
     public function testNameExists(): void
     {
         $organization = $this->organization();

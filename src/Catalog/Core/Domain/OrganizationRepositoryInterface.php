@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Catalog\Core\Domain;
 
 use App\Catalog\Core\Domain\Exception\OrganizationNotFoundException;
+use App\Catalog\Core\Domain\ValueObject\KeycloakOrganizationId;
 use App\Catalog\Core\Domain\ValueObject\OrganizationName;
 use App\Catalog\Core\Domain\ValueObject\Slug;
 use App\Shared\Identity\OrganizationId;
@@ -29,6 +30,8 @@ interface OrganizationRepositoryInterface
     public function find(OrganizationId $id): ?Organization;
 
     public function findBySlug(Slug $slug): ?Organization;
+
+    public function findByKeycloakId(KeycloakOrganizationId $keycloakId): ?Organization;
 
     public function nameExists(OrganizationName $name): bool;
 
