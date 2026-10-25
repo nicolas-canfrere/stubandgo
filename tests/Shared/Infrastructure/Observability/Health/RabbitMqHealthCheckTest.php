@@ -11,7 +11,7 @@ final class RabbitMqHealthCheckTest extends TestCase
 {
     public function testItIsNamedRabbitmq(): void
     {
-        self::assertSame('rabbitmq', new RabbitMqHealthCheck('amqp://broker')->name());
+        self::assertSame('rabbitmq', new RabbitMqHealthCheck('amqp://localhost')->name());
     }
 
     public function testRabbitMqCheckReportsUnreachableBroker(): void
@@ -34,14 +34,14 @@ final class RabbitMqHealthCheckTest extends TestCase
 
     public function testItReportsAHealthyBrokerWhenTheConnectionSucceeds(): void
     {
-        $status = new RabbitMqHealthCheck('amqp://broker', static function (): void {})->check();
+        $status = new RabbitMqHealthCheck('amqp://localhost', static function (): void {})->check();
 
         self::assertTrue($status->healthy);
     }
 
     public function testItNeverLeaksTheConnectorFailure(): void
     {
-        $check = new RabbitMqHealthCheck('amqp://broker', static function (): never {
+        $check = new RabbitMqHealthCheck('amqp://localhost', static function (): never {
             throw new \RuntimeException('login s3cret@broker refused');
         });
 
@@ -54,12 +54,12 @@ final class RabbitMqHealthCheckTest extends TestCase
     public function testItConnectsWithTheDsnPartsAndOneSecondTimeouts(): void
     {
         $received = null;
-        new RabbitMqHealthCheck('amqp://us%40er:p%3Ass@broker.local:5673/%2fvh/messages', static function (array $parameters) use (&$received): void {
+        new RabbitMqHealthCheck('amqp://us%40er:p%3Ass@127.0.0.2:5673/%2fvh/messages', static function (array $parameters) use (&$received): void {
             $received = $parameters;
         })->check();
 
         self::assertSame([
-            'host' => 'broker.local',
+            'host' => '127.0.0.2',
             'port' => 5673,
             'login' => 'us@er',
             'password' => 'p:ss',
@@ -73,12 +73,12 @@ final class RabbitMqHealthCheckTest extends TestCase
     public function testItAppliesDefaultsToABareDsn(): void
     {
         $received = null;
-        new RabbitMqHealthCheck('amqp://broker', static function (array $parameters) use (&$received): void {
+        new RabbitMqHealthCheck('amqp://localhost', static function (array $parameters) use (&$received): void {
             $received = $parameters;
         })->check();
 
         self::assertIsArray($received);
-        self::assertSame('broker', $received['host']);
+        self::assertSame('localhost', $received['host']);
         self::assertSame(5672, $received['port']);
         self::assertSame('guest', $received['login']);
         self::assertSame('guest', $received['password']);
@@ -88,7 +88,7 @@ final class RabbitMqHealthCheckTest extends TestCase
     public function testItUsesTheDefaultVhostWhenThePathIsASlash(): void
     {
         $received = null;
-        new RabbitMqHealthCheck('amqp://broker/', static function (array $parameters) use (&$received): void {
+        new RabbitMqHealthCheck('amqp://localhost/', static function (array $parameters) use (&$received): void {
             $received = $parameters;
         })->check();
 
