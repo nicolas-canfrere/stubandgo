@@ -2,7 +2,7 @@
 
 API de billetterie en ligne : des organisations publient des événements datés avec plusieurs tarifs et une jauge, un acheteur sans compte commande, paie (paiement simulé) et reçoit ses billets par email avec un QR code ; le scan du QR code à l'entrée « grille » le billet.
 
-Cette étape (L1) livre l'API complète du parcours « vendre et contrôler », sans authentification. Symfony 8.1, PHP 8.4, PostgreSQL (DBAL, sans ORM), RabbitMQ (Messenger), Mailpit.
+La L1 a livré l'API complète du parcours « vendre et contrôler » ; la L2 y ajoute Keycloak : le scan exige le jeton d'accès d'un contrôleur de l'organisation de l'événement, le reste du parcours reste public. Symfony 8.1, PHP 8.4, PostgreSQL (DBAL, sans ORM), RabbitMQ (Messenger), Mailpit.
 
 ## Prérequis
 
@@ -15,10 +15,14 @@ make install   # dépendances PHP (Composer dans un conteneur)
 ## Démarrage
 
 ```bash
-make up                                                          # nginx, php, PostgreSQL, RabbitMQ, Mailpit, worker
+make up                                                          # nginx, php, PostgreSQL, RabbitMQ, Mailpit, worker, Keycloak
 docker compose exec php bin/console doctrine:migrations:migrate -n
 docker compose exec php bin/console app:demo:load                # 2 organisations, 3 événements (tarifs Plein / Réduit / Gratuit)
 ```
+
+Keycloak met une trentaine de secondes à démarrer : attendre que `docker compose ps` le montre `healthy` (ou que `make keycloak-check` passe) avant de se connecter.
+
+Une base chargée sous la L1 n'a pas l'identifiant Keycloak de ses organisations (`keycloak_id` vide) : tout scan y répond 403. Recréez-la avec la procédure ci-dessous.
 
 Pour préparer la base de test : `make test-db`.
 
@@ -76,7 +80,7 @@ curl -s http://localhost:8025/api/v1/messages | jq '.messages[] | {Subject, To: 
 
 L'email contient un QR code par billet (images `ticket-1.png`, `ticket-2.png`). Le QR code encode le jeton du billet ; pour le démontrer sans lecteur de QR code, on le lit en base, puis on le scanne deux fois.
 
-Le scan exige le jeton d'accès Keycloak d'un **contrôleur de l'organisation de l'événement** (rôle `organization-controller` du realm `stubandgo`, voir [Keycloak](#keycloak)) : pour « Soirée Rock », `controleur.rock`. Le client `stubandgo-app` n'accepte que le flux code + PKCE : le jeton s'obtient en se connectant au front avec ce compte (c'est le jeton envoyé dans l'en-tête `Authorization` de ses appels de scan), puis :
+Le scan exige le jeton d'accès Keycloak d'un **contrôleur de l'organisation de l'événement** (rôle `organization-controller` du realm `stubandgo`, voir [Keycloak](#keycloak)) : pour « Soirée Rock », `controleur.rock`. Le client `stubandgo-app` n'accepte que le flux code + PKCE, il n'y a pas de connexion directe en ligne de commande : le jeton se lit dans le navigateur, après connexion au front (dépôt `stubandgo-app`, http://localhost:5173/scan) avec `controleur.rock` / `stubandgo-demo`. Dans les outils de développement : Application → Session Storage → `http://localhost:5173` → clé `oidc.user:http://localhost:8180/realms/stubandgo:stubandgo-app`, champ `access_token` ; ou, dans l'onglet Réseau, l'en-tête `Authorization: Bearer …` d'un appel de scan. Le jeton expire au bout de 5 minutes (durée par défaut de Keycloak) : en reprendre un frais si le scan répond 401. Puis :
 
 ```bash
 JWT='<jeton d'accès de controleur.rock>'
@@ -135,6 +139,8 @@ Avec RabbitMQ, `messenger:failed:show` donne seulement le nombre de messages (le
 ## Keycloak
 
 Le service `keycloak` (`quay.io/keycloak/keycloak:26.8.1`, mode `start-dev`) démarre avec `make up`. Il n'a pas de volume : à chaque création du conteneur, il réimporte les realms versionnés dans `docker/keycloak/`, l'état de démo est donc toujours celui des fichiers (`docker compose up -d --force-recreate keycloak` pour repartir de l'export). Le service `php` n'en dépend pas, la suite de tests ne le contacte jamais.
+
+Chaque realm exporté porte sa clé de signature RS256 (composant `rsa-demo-signing`, fournisseur `rsa`, clé privée et certificat dans le JSON). Sans elle, Keycloak tirerait une nouvelle paire de clés à chaque création du conteneur, alors que l'API garde en cache (`cache.app`, jusqu'à une heure) les clés publiques qu'elle a lues : tous les jetons seraient refusés (401) jusqu'à l'expiration du cache. Avec la clé figée, le `kid` annoncé par `/realms/<realm>/protocol/openid-connect/certs` ne change pas d'un conteneur à l'autre. **Ces clés sont du matériel de démonstration, publié dans le dépôt comme les mots de passe : elles ne doivent jamais servir ailleurs.** Les autres clés (chiffrement `RSA-OAEP`, HMAC, AES) restent générées à chaque démarrage.
 
 | Realm | Émetteur | Contenu |
 |---|---|---|
