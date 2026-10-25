@@ -9,6 +9,7 @@ use App\Catalog\Core\Application\Query\GetEventDetail;
 use App\Catalog\Core\Application\Query\GetOrganizationCatalog;
 use App\Catalog\Core\Application\Query\OrganizationCatalogView;
 use App\Catalog\Core\Application\Query\PriceTierView;
+use App\Catalog\UI\Cli\LoadDemoDataCommand;
 use App\Tests\Catalog\CatalogFixturesTrait;
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
@@ -39,6 +40,11 @@ final class LoadDemoDataCommandTest extends KernelTestCase
             'SELECT commission_basis_points FROM organization WHERE slug IN (?, ?) ORDER BY slug',
             ['demo-rock-asso', 'demo-theatre-ville'],
         ));
+
+        self::assertEquals(
+            LoadDemoDataCommand::KEYCLOAK_ORGANIZATION_IDS,
+            self::getContainer()->get(Connection::class)->fetchAllKeyValue('SELECT slug, keycloak_id FROM organization WHERE slug IN (?, ?)', ['demo-rock-asso', 'demo-theatre-ville']),
+        );
 
         $rock = $this->catalog('demo-rock-asso');
         $theatre = $this->catalog('demo-theatre-ville');

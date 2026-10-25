@@ -24,6 +24,14 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 #[AsCommand(name: 'app:demo:load', description: 'Load demo organizations and published events into the catalog')]
 final class LoadDemoDataCommand extends Command
 {
+    /**
+     * Keycloak organization identifier of each demo organization, by slug; must match docker/keycloak/stubandgo-realm.json.
+     */
+    public const array KEYCLOAK_ORGANIZATION_IDS = [
+        'demo-rock-asso' => '0f8c4f8e-3c7a-4b52-9a51-6d1f2b7c0a01',
+        'demo-theatre-ville' => '0f8c4f8e-3c7a-4b52-9a51-6d1f2b7c0a02',
+    ];
+
     private const string FIRST_SLUG = 'demo-rock-asso';
 
     /**
@@ -68,7 +76,7 @@ final class LoadDemoDataCommand extends Command
         $events = 0;
         foreach (self::ORGANIZATIONS as $slug => $organization) {
             $organizationId = OrganizationId::generate()->toString();
-            $this->commandBus->dispatch(new CreateOrganization($organizationId, $organization['name'], $slug, 1000));
+            $this->commandBus->dispatch(new CreateOrganization($organizationId, $organization['name'], $slug, 1000, self::KEYCLOAK_ORGANIZATION_IDS[$slug]));
 
             foreach ($organization['events'] as $event) {
                 $this->createPublishedEvent($organizationId, $event);

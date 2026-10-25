@@ -245,6 +245,23 @@ final class CatalogUseCasesTest extends AbstractCatalogTestCase
         $this->command(new CreateOrganization($id, 'Rock Asso', 'org-' . strtolower($id), 10001));
     }
 
+    public function testCreateOrganizationStoresItsKeycloakId(): void
+    {
+        $id = OrganizationId::generate()->toString();
+        $this->command(new CreateOrganization($id, 'Rock Asso', 'org-' . strtolower($id), 1000, '0F8C4F8E-3C7A-4B52-9A51-6D1F2B7C0AAA'));
+
+        self::assertSame('0f8c4f8e-3c7a-4b52-9a51-6d1f2b7c0aaa', self::getContainer()->get(Connection::class)->fetchOne('SELECT keycloak_id FROM organization WHERE id = ?', [$id]));
+    }
+
+    public function testCreateOrganizationRejectsMalformedKeycloakId(): void
+    {
+        $id = OrganizationId::generate()->toString();
+
+        $this->expectException(InvalidValueException::class);
+
+        $this->command(new CreateOrganization($id, 'Rock Asso', 'org-' . strtolower($id), 1000, 'not-a-uuid'));
+    }
+
     public function testCreateEventCommandCarriesItsPayload(): void
     {
         $command = new CreateEvent('a', 'b', 'c', 'd', 'e', 'f', 3, []);

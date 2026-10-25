@@ -15,6 +15,7 @@ use App\Catalog\Core\Domain\PriceTier;
 use App\Catalog\Core\Domain\ValueObject\CommissionRate;
 use App\Catalog\Core\Domain\ValueObject\EventDescription;
 use App\Catalog\Core\Domain\ValueObject\EventTitle;
+use App\Catalog\Core\Domain\ValueObject\KeycloakOrganizationId;
 use App\Catalog\Core\Domain\ValueObject\OrganizationName;
 use App\Catalog\Core\Domain\ValueObject\PriceTierLabel;
 use App\Catalog\Core\Domain\ValueObject\Slug;
@@ -211,6 +212,25 @@ final class DbalRepositoriesTest extends KernelTestCase
         $this->organizations->save(Organization::create(OrganizationId::generate(), OrganizationName::fromString('Autre'), $organization->slug(), CommissionRate::fromBasisPoints(0)));
     }
 
+    public function testKeycloakIdRoundTrips(): void
+    {
+        $withId = $this->organization(keycloakId: '0F8C4F8E-3C7A-4B52-9A51-6D1F2B7C0AFF');
+        $without = $this->organization();
+
+        self::assertSame('0f8c4f8e-3c7a-4b52-9a51-6d1f2b7c0aff', $this->organizations->get($withId->id())->keycloakId()?->toString());
+        self::assertNull($this->organizations->get($without->id())->keycloakId());
+        self::assertSame('0f8c4f8e-3c7a-4b52-9a51-6d1f2b7c0aff', $this->organizations->getBySlug($withId->slug())->keycloakId()?->toString());
+    }
+
+    public function testKeycloakIdIsUnique(): void
+    {
+        $this->organization(keycloakId: '0f8c4f8e-3c7a-4b52-9a51-6d1f2b7c0afe');
+
+        $this->expectException(\Doctrine\DBAL\Exception\UniqueConstraintViolationException::class);
+
+        $this->organization(keycloakId: '0f8c4f8e-3c7a-4b52-9a51-6d1f2b7c0afe');
+    }
+
     public function testEventRequiresAnExistingOrganization(): void
     {
         $this->expectException(\Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException::class);
@@ -231,10 +251,10 @@ final class DbalRepositoriesTest extends KernelTestCase
         self::assertSame('timestamp with time zone', $connection->fetchOne("SELECT data_type FROM information_schema.columns WHERE table_name = 'event' AND column_name = 'starts_at'"));
     }
 
-    private function organization(int $commission = 1000): Organization
+    private function organization(int $commission = 1000, ?string $keycloakId = null): Organization
     {
         $id = OrganizationId::generate();
-        $organization = Organization::create($id, OrganizationName::fromString('Rock Asso'), Slug::fromString('org-' . strtolower($id->toString())), CommissionRate::fromBasisPoints($commission));
+        $organization = Organization::create($id, OrganizationName::fromString('Rock Asso'), Slug::fromString('org-' . strtolower($id->toString())), CommissionRate::fromBasisPoints($commission), null === $keycloakId ? null : KeycloakOrganizationId::fromString($keycloakId));
         $this->organizations->save($organization);
 
         return $organization;

@@ -13,6 +13,7 @@ final readonly class CreateOrganization implements CommandInterface
         public string $name,
         public string $slug,
         public int $commissionBasisPoints,
+        public ?string $keycloakOrganizationId = null,
     ) {
     }
 }

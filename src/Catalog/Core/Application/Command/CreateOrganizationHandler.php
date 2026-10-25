@@ -7,6 +7,7 @@ namespace App\Catalog\Core\Application\Command;
 use App\Catalog\Core\Domain\Organization;
 use App\Catalog\Core\Domain\OrganizationRepositoryInterface;
 use App\Catalog\Core\Domain\ValueObject\CommissionRate;
+use App\Catalog\Core\Domain\ValueObject\KeycloakOrganizationId;
 use App\Catalog\Core\Domain\ValueObject\OrganizationName;
 use App\Catalog\Core\Domain\ValueObject\Slug;
 use App\Shared\Identity\OrganizationId;
@@ -24,6 +25,7 @@ final readonly class CreateOrganizationHandler
             OrganizationName::fromString($command->name),
             Slug::fromString($command->slug),
             CommissionRate::fromBasisPoints($command->commissionBasisPoints),
+            null === $command->keycloakOrganizationId ? null : KeycloakOrganizationId::fromString($command->keycloakOrganizationId),
         ));
     }
 }
