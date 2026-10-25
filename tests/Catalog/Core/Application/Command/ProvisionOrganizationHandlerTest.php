@@ -68,6 +68,19 @@ final class ProvisionOrganizationHandlerTest extends AbstractCatalogTestCase
         self::assertSame('active', $this->row($organization['id'])[0]);
     }
 
+    public function testARateChangedWhileKeycloakAnswersSurvivesTheActivation(): void
+    {
+        $organization = $this->createOrganization(1000);
+        $this->directory()->whileEnsuring(static function () use ($organization): void {
+            self::getContainer()->get(Connection::class)->executeStatement('UPDATE organization SET commission_basis_points = 250 WHERE id = ?', [$organization['id']]);
+        });
+
+        $this->command(new ProvisionOrganization($organization['id']));
+
+        self::assertSame('active', $this->row($organization['id'])[0]);
+        self::assertSame(250, self::getContainer()->get(Connection::class)->fetchOne('SELECT commission_basis_points FROM organization WHERE id = ?', [$organization['id']]));
+    }
+
     public function testUnknownOrganizationIsRejected(): void
     {
         $this->expectException(OrganizationNotFoundException::class);

@@ -388,7 +388,7 @@ final class DbalRepositoriesTest extends KernelTestCase
 
         $this->expectException(\Doctrine\DBAL\Exception\UniqueConstraintViolationException::class);
 
-        $this->organizations->save(Organization::create(OrganizationId::generate(), OrganizationName::fromString('Autre'), $organization->slug(), CommissionRate::fromBasisPoints(0)));
+        $this->organizations->add(Organization::create(OrganizationId::generate(), OrganizationName::fromString('Autre'), $organization->slug(), CommissionRate::fromBasisPoints(0)));
     }
 
     public function testKeycloakIdRoundTrips(): void
@@ -416,7 +416,7 @@ final class DbalRepositoriesTest extends KernelTestCase
 
         $this->expectException(\Doctrine\DBAL\Exception\UniqueConstraintViolationException::class);
 
-        $this->organizations->save(Organization::create(OrganizationId::generate(), $organization->name(), Slug::fromString('other-' . strtolower(OrganizationId::generate()->toString())), CommissionRate::fromBasisPoints(0)));
+        $this->organizations->add(Organization::create(OrganizationId::generate(), $organization->name(), Slug::fromString('other-' . strtolower(OrganizationId::generate()->toString())), CommissionRate::fromBasisPoints(0)));
     }
 
     public function testStatusRoundTrips(): void
@@ -429,19 +429,74 @@ final class DbalRepositoriesTest extends KernelTestCase
         self::assertSame(OrganizationStatus::Active, $this->organizations->getBySlug($active->slug())->status());
     }
 
-    public function testSavingAgainUpdatesStatusKeycloakIdAndRateOnly(): void
+    public function testActivationWritesTheStatusAndTheKeycloakIdOnly(): void
     {
         $organization = $this->organization(commission: 1000, keycloakId: null);
-        $organization->activate(KeycloakOrganizationId::fromString('0f8c4f8e-3c7a-4b52-9a51-6d1f2b7c0a78'));
-        $organization->changeCommissionRate(CommissionRate::fromBasisPoints(42));
+        $stale = $this->organizations->get($organization->id());
+        $this->rate($organization, 250);
+        $stale->activate(KeycloakOrganizationId::fromString('0f8c4f8e-3c7a-4b52-9a51-6d1f2b7c0a78'));
+        $stale->changeCommissionRate(CommissionRate::fromBasisPoints(42));
 
-        $this->organizations->save($organization);
+        $this->organizations->recordActivation($stale);
 
         $loaded = $this->organizations->get($organization->id());
         self::assertSame(OrganizationStatus::Active, $loaded->status());
         self::assertSame('0f8c4f8e-3c7a-4b52-9a51-6d1f2b7c0a78', $loaded->keycloakId()?->toString());
-        self::assertSame(42, $loaded->commissionRate()->toBasisPoints());
+        self::assertSame(250, $loaded->commissionRate()->toBasisPoints());
         self::assertSame('Rock Asso ' . $organization->id()->toString(), $loaded->name()->toString());
+    }
+
+    public function testActivationNeverReplacesTheKeycloakIdOfAnAlreadyActiveOrganization(): void
+    {
+        $organization = $this->organization(keycloakId: null);
+        $first = $this->organizations->get($organization->id());
+        $second = $this->organizations->get($organization->id());
+        $first->activate(KeycloakOrganizationId::fromString('0f8c4f8e-3c7a-4b52-9a51-6d1f2b7c0a81'));
+        $this->organizations->recordActivation($first);
+        $second->activate(KeycloakOrganizationId::fromString('0f8c4f8e-3c7a-4b52-9a51-6d1f2b7c0a82'));
+
+        $this->organizations->recordActivation($second);
+
+        self::assertSame('0f8c4f8e-3c7a-4b52-9a51-6d1f2b7c0a81', $this->organizations->get($organization->id())->keycloakId()?->toString());
+    }
+
+    public function testCommissionRateChangeWritesTheRateOnly(): void
+    {
+        $organization = $this->organization(commission: 1000, keycloakId: null);
+        $stale = $this->organizations->get($organization->id());
+        $activated = $this->organizations->get($organization->id());
+        $activated->activate(KeycloakOrganizationId::fromString('0f8c4f8e-3c7a-4b52-9a51-6d1f2b7c0a83'));
+        $this->organizations->recordActivation($activated);
+        $stale->changeCommissionRate(CommissionRate::fromBasisPoints(42));
+
+        $this->organizations->recordCommissionRate($stale);
+
+        $loaded = $this->organizations->get($organization->id());
+        self::assertSame(42, $loaded->commissionRate()->toBasisPoints());
+        self::assertSame(OrganizationStatus::Active, $loaded->status());
+        self::assertSame('0f8c4f8e-3c7a-4b52-9a51-6d1f2b7c0a83', $loaded->keycloakId()?->toString());
+    }
+
+    public function testCommissionRateChangeTouchesThatOrganizationOnly(): void
+    {
+        $changed = $this->organization(commission: 1000);
+        $other = $this->organization(commission: 1000);
+        $changed->changeCommissionRate(CommissionRate::fromBasisPoints(42));
+
+        $this->organizations->recordCommissionRate($changed);
+
+        self::assertSame(1000, $this->organizations->get($other->id())->commissionRate()->toBasisPoints());
+    }
+
+    public function testActivationTouchesThatOrganizationOnly(): void
+    {
+        $activated = $this->organization(keycloakId: null);
+        $other = $this->organization(keycloakId: null);
+        $activated->activate(KeycloakOrganizationId::fromString('0f8c4f8e-3c7a-4b52-9a51-6d1f2b7c0a84'));
+
+        $this->organizations->recordActivation($activated);
+
+        self::assertSame(OrganizationStatus::PendingKeycloak, $this->organizations->get($other->id())->status());
     }
 
     public function testFindBySlug(): void
@@ -516,7 +571,7 @@ final class DbalRepositoriesTest extends KernelTestCase
     {
         foreach (['Zorro Spectacles', 'Alpha Spectacles', 'Milieu Spectacles'] as $name) {
             $id = OrganizationId::generate();
-            $this->organizations->save(Organization::create($id, OrganizationName::fromString($name), Slug::fromString('list-' . strtolower($id->toString())), CommissionRate::fromBasisPoints(0)));
+            $this->organizations->add(Organization::create($id, OrganizationName::fromString($name), Slug::fromString('list-' . strtolower($id->toString())), CommissionRate::fromBasisPoints(0)));
         }
 
         $names = array_map(static fn(Organization $organization): string => $organization->name()->toString(), $this->organizations->listByName());
@@ -531,9 +586,14 @@ final class DbalRepositoriesTest extends KernelTestCase
     {
         $id = OrganizationId::generate();
         $organization = Organization::create($id, OrganizationName::fromString('Rock Asso ' . $id->toString()), Slug::fromString('org-' . strtolower($id->toString())), CommissionRate::fromBasisPoints($commission), null === $keycloakId ? null : KeycloakOrganizationId::fromString($keycloakId));
-        $this->organizations->save($organization);
+        $this->organizations->add($organization);
 
         return $organization;
+    }
+
+    private function rate(Organization $organization, int $basisPoints): void
+    {
+        self::getContainer()->get(Connection::class)->executeStatement('UPDATE organization SET commission_basis_points = ? WHERE id = ?', [$basisPoints, $organization->id()->toString()]);
     }
 
     /**

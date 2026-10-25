@@ -41,7 +41,15 @@ final class OrganizationReferencesTest extends TestCase
                 }
             }
 
-            public function save(Organization $organization): void
+            public function add(Organization $organization): void
+            {
+            }
+
+            public function recordActivation(Organization $organization): void
+            {
+            }
+
+            public function recordCommissionRate(Organization $organization): void
             {
             }
 

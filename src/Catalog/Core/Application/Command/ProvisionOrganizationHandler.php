@@ -26,6 +26,6 @@ final readonly class ProvisionOrganizationHandler
         }
 
         $organization->activate($this->directory->ensureOrganization($organization->slug(), $organization->name()));
-        $this->organizations->save($organization);
+        $this->organizations->recordActivation($organization);
     }
 }

@@ -33,7 +33,7 @@ final readonly class CreateOrganizationHandler
             throw OrganizationNameTakenException::withName($name);
         }
 
-        $this->organizations->save(Organization::create(
+        $this->organizations->add(Organization::create(
             OrganizationId::fromString($command->id),
             $name,
             $slug,

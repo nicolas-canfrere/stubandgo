@@ -18,6 +18,6 @@ final readonly class ChangeCommissionRateHandler
     {
         $organization = $this->organizations->get(OrganizationId::fromString($command->organizationId));
         $organization->changeCommissionRate(CommissionRate::fromBasisPoints($command->commissionBasisPoints));
-        $this->organizations->save($organization);
+        $this->organizations->recordCommissionRate($organization);
     }
 }

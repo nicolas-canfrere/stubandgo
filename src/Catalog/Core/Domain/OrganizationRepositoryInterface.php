@@ -13,9 +13,21 @@ use App\Shared\Identity\OrganizationId;
 interface OrganizationRepositoryInterface
 {
     /**
-     * Inserts a new organization, or updates the status, Keycloak identifier and commission rate of a known one.
+     * Inserts a new organization.
      */
-    public function save(Organization $organization): void;
+    public function add(Organization $organization): void;
+
+    /**
+     * Writes the status and the Keycloak identifier of an activated organization, and nothing else, only while it is
+     * still pending: a commission rate changed since the organization was read is never reverted, and an organization
+     * activated in the meantime keeps its Keycloak identifier.
+     */
+    public function recordActivation(Organization $organization): void;
+
+    /**
+     * Writes the commission rate of an organization, and nothing else: its status and Keycloak identifier stay as stored.
+     */
+    public function recordCommissionRate(Organization $organization): void;
 
     /**
      * @throws OrganizationNotFoundException

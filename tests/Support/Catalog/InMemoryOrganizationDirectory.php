@@ -28,11 +28,17 @@ final class InMemoryOrganizationDirectory implements OrganizationDirectoryInterf
     /** @var list<array{slug: Slug, name: OrganizationName}> */
     private array $ensureCalls = [];
     private bool $failNextCall = false;
+    private ?\Closure $whileEnsuring = null;
 
     public function ensureOrganization(Slug $slug, OrganizationName $name): KeycloakOrganizationId
     {
         $this->failIfArmed();
         $this->ensureCalls[] = ['slug' => $slug, 'name' => $name];
+
+        if (null !== $this->whileEnsuring) {
+            [$sideEffect, $this->whileEnsuring] = [$this->whileEnsuring, null];
+            $sideEffect();
+        }
 
         return $this->organizations[$slug->toString()] ??= KeycloakOrganizationId::fromString(Uuid::v4()->toRfc4122());
     }
@@ -55,6 +61,15 @@ final class InMemoryOrganizationDirectory implements OrganizationDirectoryInterf
     public function failNextCall(): void
     {
         $this->failNextCall = true;
+    }
+
+    /**
+     * Runs the side effect, once, while the next organization is ensured: what another request writes while the
+     * identity provider is answering.
+     */
+    public function whileEnsuring(\Closure $sideEffect): void
+    {
+        $this->whileEnsuring = $sideEffect;
     }
 
     /**

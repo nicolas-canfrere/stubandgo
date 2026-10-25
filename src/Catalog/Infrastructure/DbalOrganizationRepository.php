@@ -23,25 +23,35 @@ final readonly class DbalOrganizationRepository implements OrganizationRepositor
     {
     }
 
-    public function save(Organization $organization): void
+    public function add(Organization $organization): void
+    {
+        $this->connection->insert('organization', [
+            'id' => $organization->id()->toString(),
+            'name' => $organization->name()->toString(),
+            'slug' => $organization->slug()->toString(),
+            'commission_basis_points' => $organization->commissionRate()->toBasisPoints(),
+            'status' => $organization->status()->value,
+            'keycloak_id' => $organization->keycloakId()?->toString(),
+        ]);
+    }
+
+    public function recordActivation(Organization $organization): void
     {
         $this->connection->executeStatement(
-            <<<'SQL'
-                INSERT INTO organization (id, name, slug, commission_basis_points, status, keycloak_id)
-                VALUES (:id, :name, :slug, :commission, :status, :keycloak)
-                ON CONFLICT (id) DO UPDATE SET
-                    commission_basis_points = EXCLUDED.commission_basis_points,
-                    status = EXCLUDED.status,
-                    keycloak_id = EXCLUDED.keycloak_id
-                SQL,
+            "UPDATE organization SET status = :status, keycloak_id = :keycloak WHERE id = :id AND status = 'pending_keycloak'",
             [
                 'id' => $organization->id()->toString(),
-                'name' => $organization->name()->toString(),
-                'slug' => $organization->slug()->toString(),
-                'commission' => $organization->commissionRate()->toBasisPoints(),
                 'status' => $organization->status()->value,
                 'keycloak' => $organization->keycloakId()?->toString(),
             ],
+        );
+    }
+
+    public function recordCommissionRate(Organization $organization): void
+    {
+        $this->connection->executeStatement(
+            'UPDATE organization SET commission_basis_points = :commission WHERE id = :id',
+            ['id' => $organization->id()->toString(), 'commission' => $organization->commissionRate()->toBasisPoints()],
         );
     }
 
