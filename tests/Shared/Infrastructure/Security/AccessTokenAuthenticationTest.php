@@ -120,6 +120,17 @@ final class AccessTokenAuthenticationTest extends WebTestCase
         $this->assertUnauthorized('Bearer error="invalid_token"');
     }
 
+    public function testTheReasonAnInvalidTokenIsRejectedIsLoggedAsInformationWithoutTrace(): void
+    {
+        $this->requestWithToken(self::WHOAMI, TestTokenIssuer::issue(['aud' => 'account']));
+
+        $records = self::logRecords('An error occurred while decoding and validating the token.');
+        self::assertCount(1, $records);
+        self::assertSame(Level::Info, $records[0]->level);
+        self::assertSame('Bad audience.', $records[0]->context['error']);
+        self::assertArrayNotHasKey('trace', $records[0]->context);
+    }
+
     public function testAPublicRouteAcceptsAValidToken(): void
     {
         $this->requestWithToken('/api/events', TestTokenIssuer::issue());
@@ -157,6 +168,6 @@ final class AccessTokenAuthenticationTest extends WebTestCase
         self::assertSame('/problems/unauthorized', $problem['type']);
         self::assertSame('Unauthorized', $problem['title']);
         self::assertSame(401, $problem['status']);
-        self::assertSame([Level::Warning], self::uncaughtExceptionLevels(), 'A refused request is logged as a warning.');
+        self::assertLoggedAsRejection();
     }
 }
