@@ -27,6 +27,6 @@ final readonly class GetEventDetailHandler
             throw EventNotFoundException::withId($id);
         }
 
-        return EventDetailView::fromEvent($event, new OrganizationSlugs($this->organizations)->of($event->organizationId()));
+        return EventDetailView::fromEvent($event, new OrganizationReferences($this->organizations)->of($event->organizationId()));
     }
 }

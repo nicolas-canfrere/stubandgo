@@ -31,9 +31,10 @@ nelmio_api_doc:
                         orderStatus: { type: string, enum: [pending, paid, failed, expired], description: 'Present on payment problems (payment_declined, order_expired): the resulting order status.', example: failed }
                 OrganizationReference:
                     type: object
-                    required: [slug]
+                    required: [slug, name]
                     properties:
                         slug: { type: string, example: demo-rock-asso }
+                        name: { type: string, example: Rock Asso }
                 EventSummary:
                     type: object
                     required: [id, title, venue, startsAt, organization]

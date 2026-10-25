@@ -390,10 +390,14 @@ components:
     OrganizationReference:
       required:
         - slug
+        - name
       properties:
         slug:
           type: string
           example: demo-rock-asso
+        name:
+          type: string
+          example: 'Rock Asso'
       type: object
     EventSummary:
       required:

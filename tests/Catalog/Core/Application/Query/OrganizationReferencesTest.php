@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Catalog\Core\Application\Query;
 
-use App\Catalog\Core\Application\Query\OrganizationSlugs;
+use App\Catalog\Core\Application\Query\OrganizationReferences;
 use App\Catalog\Core\Domain\Organization;
 use App\Catalog\Core\Domain\OrganizationRepositoryInterface;
 use App\Catalog\Core\Domain\ValueObject\CommissionRate;
@@ -13,9 +13,9 @@ use App\Catalog\Core\Domain\ValueObject\Slug;
 use App\Shared\Identity\OrganizationId;
 use PHPUnit\Framework\TestCase;
 
-final class OrganizationSlugsTest extends TestCase
+final class OrganizationReferencesTest extends TestCase
 {
-    public function testEachOrganizationIsReadOnceAndSlugsAreNotMixedUp(): void
+    public function testEachOrganizationIsReadOnceAndReferencesAreNotMixedUp(): void
     {
         $first = OrganizationId::generate();
         $second = OrganizationId::generate();
@@ -33,7 +33,7 @@ final class OrganizationSlugsTest extends TestCase
                 foreach ($ids as $position => $id) {
                     $this->organizations[$id->toString()] = Organization::create(
                         $id,
-                        OrganizationName::fromString('Asso'),
+                        OrganizationName::fromString('Asso ' . $position),
                         Slug::fromString('asso-' . $position),
                         CommissionRate::fromBasisPoints(1000),
                     );
@@ -61,12 +61,14 @@ final class OrganizationSlugsTest extends TestCase
                 return $this->organizations[$id->toString()] ?? null;
             }
         };
-        $slugs = new OrganizationSlugs($repository);
+        $references = new OrganizationReferences($repository);
 
-        self::assertSame('asso-0', $slugs->of($first));
-        self::assertSame('asso-1', $slugs->of($second));
-        self::assertSame('asso-0', $slugs->of($first));
-        self::assertSame('asso-1', $slugs->of($second));
+        self::assertSame('asso-0', $references->of($first)->slug);
+        self::assertSame('asso-1', $references->of($second)->slug);
+        self::assertSame('asso-0', $references->of($first)->slug);
+        self::assertSame('asso-1', $references->of($second)->slug);
+        self::assertSame('Asso 0', $references->of($first)->name);
+        self::assertSame('Asso 1', $references->of($second)->name);
         self::assertSame(2, $repository->reads);
     }
 }

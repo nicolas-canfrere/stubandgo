@@ -11,14 +11,15 @@ final readonly class EventSummaryView
     public function __construct(
         public string $eventId,
         public string $organizationSlug,
+        public string $organizationName,
         public string $title,
         public string $venue,
         public \DateTimeImmutable $startsAt,
     ) {
     }
 
-    public static function fromEvent(Event $event, string $organizationSlug): self
+    public static function fromEvent(Event $event, OrganizationReferenceView $organization): self
     {
-        return new self($event->id()->toString(), $organizationSlug, $event->title()->toString(), $event->venue()->toString(), $event->startsAt());
+        return new self($event->id()->toString(), $organization->slug, $organization->name, $event->title()->toString(), $event->venue()->toString(), $event->startsAt());
     }
 }

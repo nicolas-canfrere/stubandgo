@@ -22,14 +22,14 @@ final readonly class GetOrganizationCatalogHandler
     public function __invoke(GetOrganizationCatalog $query): OrganizationCatalogView
     {
         $organization = $this->organizations->getBySlug(Slug::fromString($query->slug));
-        $slug = $organization->slug()->toString();
+        $reference = OrganizationReferenceView::fromOrganization($organization);
 
         return new OrganizationCatalogView(
             $organization->id()->toString(),
             $organization->name()->toString(),
-            $slug,
+            $reference->slug,
             array_map(
-                static fn(Event $event): EventSummaryView => EventSummaryView::fromEvent($event, $slug),
+                static fn(Event $event): EventSummaryView => EventSummaryView::fromEvent($event, $reference),
                 $this->events->listPublishedByOrganization($organization->id(), $this->clock->now()),
             ),
         );

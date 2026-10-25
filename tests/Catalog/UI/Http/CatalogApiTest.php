@@ -48,7 +48,7 @@ final class CatalogApiTest extends WebTestCase
             'title' => 'Concert',
             'venue' => 'La Cigale',
             'startsAt' => '2026-12-01T19:00:00Z',
-            'organization' => ['slug' => $organization['slug']],
+            'organization' => ['slug' => $organization['slug'], 'name' => 'Rock Asso'],
         ], $byId[$upcoming]);
         self::assertArrayNotHasKey($draft, $byId);
         self::assertArrayNotHasKey($past, $byId);
@@ -99,8 +99,8 @@ final class CatalogApiTest extends WebTestCase
             'slug' => $organization['slug'],
             'name' => 'Rock Asso',
             'events' => [
-                ['id' => $first, 'title' => 'First', 'venue' => 'La Cigale', 'startsAt' => '2026-12-01T19:00:00Z', 'organization' => ['slug' => $organization['slug']]],
-                ['id' => $second, 'title' => 'Second', 'venue' => 'La Cigale', 'startsAt' => '2026-12-02T19:00:00Z', 'organization' => ['slug' => $organization['slug']]],
+                ['id' => $first, 'title' => 'First', 'venue' => 'La Cigale', 'startsAt' => '2026-12-01T19:00:00Z', 'organization' => ['slug' => $organization['slug'], 'name' => 'Rock Asso']],
+                ['id' => $second, 'title' => 'Second', 'venue' => 'La Cigale', 'startsAt' => '2026-12-02T19:00:00Z', 'organization' => ['slug' => $organization['slug'], 'name' => 'Rock Asso']],
             ],
         ], $catalog);
     }
@@ -143,7 +143,7 @@ final class CatalogApiTest extends WebTestCase
             'venue' => 'La Cigale',
             'startsAt' => '2026-12-01T19:00:00Z',
             'capacity' => 100,
-            'organization' => ['slug' => $organization['slug']],
+            'organization' => ['slug' => $organization['slug'], 'name' => 'Rock Asso'],
             'priceTiers' => [
                 ['id' => $plein, 'label' => 'Plein', 'priceCents' => 2550],
                 ['id' => $gratuit, 'label' => 'Gratuit', 'priceCents' => 0],

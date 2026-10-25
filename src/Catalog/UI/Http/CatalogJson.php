@@ -12,7 +12,7 @@ use App\Catalog\Core\Application\Query\EventSummaryView;
 final class CatalogJson
 {
     /**
-     * @return array{id: string, title: string, venue: string, startsAt: string, organization: array{slug: string}}
+     * @return array{id: string, title: string, venue: string, startsAt: string, organization: array{slug: string, name: string}}
      */
     public static function summary(EventSummaryView $event): array
     {
@@ -21,7 +21,7 @@ final class CatalogJson
             'title' => $event->title,
             'venue' => $event->venue,
             'startsAt' => self::date($event->startsAt),
-            'organization' => ['slug' => $event->organizationSlug],
+            'organization' => ['slug' => $event->organizationSlug, 'name' => $event->organizationName],
         ];
     }
 

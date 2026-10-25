@@ -47,7 +47,7 @@ final readonly class GetEventDetailController
             'venue' => $event->venue,
             'startsAt' => CatalogJson::date($event->startsAt),
             'capacity' => $event->capacity,
-            'organization' => ['slug' => $event->organizationSlug],
+            'organization' => ['slug' => $event->organizationSlug, 'name' => $event->organizationName],
             'priceTiers' => array_map(
                 static fn(PriceTierView $tier): array => ['id' => $tier->priceTierId, 'label' => $tier->label, 'priceCents' => $tier->priceCents],
                 $event->priceTiers,

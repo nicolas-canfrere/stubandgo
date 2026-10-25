@@ -16,6 +16,7 @@ final readonly class EventDetailView
         public string $eventId,
         public string $organizationId,
         public string $organizationSlug,
+        public string $organizationName,
         public string $title,
         public string $description,
         public string $venue,
@@ -25,12 +26,13 @@ final readonly class EventDetailView
     ) {
     }
 
-    public static function fromEvent(Event $event, string $organizationSlug): self
+    public static function fromEvent(Event $event, OrganizationReferenceView $organization): self
     {
         return new self(
             $event->id()->toString(),
             $event->organizationId()->toString(),
-            $organizationSlug,
+            $organization->slug,
+            $organization->name,
             $event->title()->toString(),
             $event->description()->toString(),
             $event->venue()->toString(),

@@ -23,10 +23,10 @@ final readonly class ListUpcomingEventsHandler
      */
     public function __invoke(ListUpcomingEvents $query): array
     {
-        $slugs = new OrganizationSlugs($this->organizations);
+        $references = new OrganizationReferences($this->organizations);
 
         return array_map(
-            static fn(Event $event): EventSummaryView => EventSummaryView::fromEvent($event, $slugs->of($event->organizationId())),
+            static fn(Event $event): EventSummaryView => EventSummaryView::fromEvent($event, $references->of($event->organizationId())),
             $this->events->listPublishedStartingAfter($this->clock->now()),
         );
     }
