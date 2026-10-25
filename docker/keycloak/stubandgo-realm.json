@@ -345,7 +345,7 @@
       "publicClient": false,
       "protocol": "openid-connect",
       "clientAuthenticatorType": "client-secret",
-      "secret": "stubandgo-admin-api-demo-secret",
+      "secret": "stubandgo-admin-demo-secret",
       "standardFlowEnabled": false,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,

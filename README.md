@@ -144,7 +144,7 @@ Chaque realm exporté porte sa clé de signature RS256 (composant `rsa-demo-sign
 
 | Realm | Émetteur | Contenu |
 |---|---|---|
-| `stubandgo` | `http://localhost:8180/realms/stubandgo` | organisations `demo-rock-asso` et `demo-theatre-ville`, rôles `organization-admin` et `organization-controller`, client public `stubandgo-app` (code + PKCE, redirection `http://localhost:5173/*` et `http://127.0.0.1:5173/*`) |
+| `stubandgo` | `http://localhost:8180/realms/stubandgo` | organisations `demo-rock-asso` et `demo-theatre-ville`, rôles `organization-admin` et `organization-controller`, client public `stubandgo-app` (code + PKCE, redirection `http://localhost:5173/*` et `http://127.0.0.1:5173/*`), client confidentiel `stubandgo-admin-api` (compte de service de l'API, `client_credentials`, rôles `realm-management` `manage-organizations`, `manage-users`, `view-realm` ; secret de démo `stubandgo-admin-demo-secret`, jamais hors de la pile de dev) ; SMTP du realm vers Mailpit (`mailer:1025`, expéditeur `no-reply@stubandgo.test`) |
 | `stubandgo-staff` | `http://localhost:8180/realms/stubandgo-staff` | rôle `platform-admin`, client public `stubandgo-staff-cli` (direct access grants autorisés) |
 
 Comptes de démo, tous avec le mot de passe `stubandgo-demo` : `controleur.rock` (contrôleur, Rock Asso), `admin.rock` (administrateur, Rock Asso), `controleur.theatre` (contrôleur, Théâtre de la Ville) dans `stubandgo` ; `admin.plateforme` (`platform-admin`) dans `stubandgo-staff`. La console d'administration est `http://localhost:8180` (`admin` / `admin`).

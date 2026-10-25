@@ -92,6 +92,10 @@ keycloak-check: ## Fail unless Keycloak announces the public issuer of both real
 
 keycloak-reset: ## Drop Keycloak and its data volume: the next "make up" re-imports the realm exports
 	docker compose rm -sf keycloak
-	docker volume rm -f $$(docker compose config --format json | jq -r '.name')_keycloak_data
+	@project=$$(docker compose config | sed -n 's/^name: //p'); \
+	test -n "$$project" || { echo "keycloak-reset: cannot resolve the compose project name" >&2; exit 1; }; \
+	volume=$$(docker volume ls -q --filter "label=com.docker.compose.project=$$project" --filter "label=com.docker.compose.volume=keycloak_data"); \
+	test -n "$$volume" || { echo "keycloak-reset: no keycloak_data volume found for project $$project" >&2; exit 1; }; \
+	docker volume rm $$volume
 
 ci: cs-check phpstan deptrac lint-container openapi-check openapi-lint test crap mutation ## Run every quality gate
