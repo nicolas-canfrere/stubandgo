@@ -36,7 +36,7 @@ final class MetricsEndpointTest extends WebTestCase
         $client->request('GET', '/metrics');
 
         $body = (string) $client->getResponse()->getContent();
-        foreach (['stubandgo_orders', 'stubandgo_outbox_pending_messages', 'stubandgo_outbox_oldest_pending_age_seconds', 'stubandgo_outbox_quarantined_messages', 'stubandgo_scans'] as $name) {
+        foreach (['stubandgo_orders', 'stubandgo_outbox_pending_messages', 'stubandgo_outbox_oldest_pending_age_seconds', 'stubandgo_outbox_quarantined_messages', 'stubandgo_scans', 'stubandgo_ticket_bundles_undelivered'] as $name) {
             self::assertStringContainsString("# TYPE $name gauge\n", $body);
         }
         self::assertStringContainsString('stubandgo_orders{status="paid"} ', $body);

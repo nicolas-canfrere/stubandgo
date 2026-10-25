@@ -89,6 +89,18 @@ docker compose logs php worker | grep <trace_id>
 
 On y retrouve, dans l'ordre, la requête (`php`), la commande `PayOrder`, l'événement `OrderPaid`, puis l'envoi des billets (`worker`). Le numéro de carte n'apparaît jamais dans les logs.
 
+## Envois de billets en échec
+
+Un envoi de billets qui échoue (serveur SMTP injoignable, par exemple) est retenté 10 fois par le worker, avec un délai croissant : environ 1 s, 3 s, 9 s… jusqu'à une heure entre deux essais. Après le dernier essai, le message n'est pas perdu : il est rangé dans le transport d'échec `failed` (file RabbitMQ `failed`, DSN `MESSENGER_FAILURE_TRANSPORT_DSN`). La métrique `stubandgo_ticket_bundles_undelivered` compte les commandes payées dont les billets n'ont pas encore été envoyés ; si elle ne redescend pas, regarder le transport d'échec :
+
+```bash
+docker compose exec php bin/console messenger:failed:show            # nombre de messages en échec
+docker compose exec php bin/console messenger:failed:retry           # détail de chaque message, puis le relancer ou le supprimer
+docker compose exec php bin/console messenger:failed:retry --force   # tout relancer sans confirmation
+```
+
+Avec RabbitMQ, `messenger:failed:show` donne seulement le nombre de messages (le transport AMQP ne sait pas les lister) ; `messenger:failed:retry` affiche le détail de chacun avant de le relancer. La file `failed` est aussi visible dans l'interface RabbitMQ. Un envoi relancé reste idempotent : des billets déjà envoyés ne repartent pas.
+
 ## Architecture
 
 - Trois contextes, chacun un hexagone (`src/<Contexte>/Core`, `Infrastructure`, `UI`) : `Catalog` (organisations, événements, tarifs), `Sales` (commandes, places, paiement simulé), `Access` (billets, QR codes, scan). `src/Shared` est le noyau partagé. Les dépendances sont vérifiées par Deptrac.

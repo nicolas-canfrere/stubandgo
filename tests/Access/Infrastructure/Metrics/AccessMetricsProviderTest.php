@@ -53,6 +53,20 @@ final class AccessMetricsProviderTest extends KernelTestCase
         self::assertSame(0.0, $this->delta($before, $after, 'already_used'));
     }
 
+    public function testMetricsCountUndeliveredTicketBundles(): void
+    {
+        $before = self::gaugeValue($this->provider->collect(), 'stubandgo_ticket_bundles_undelivered');
+        $this->bundle(deliveredAt: null);
+        $this->bundle(deliveredAt: null);
+        $this->bundle(deliveredAt: '2026-10-24T12:00:00+00:00');
+
+        $after = self::gaugeValue($this->provider->collect(), 'stubandgo_ticket_bundles_undelivered');
+
+        self::assertNotNull($before);
+        self::assertNotNull($after);
+        self::assertSame(2.0, $after - $before);
+    }
+
     /**
      * @param iterable<Gauge> $before
      * @param iterable<Gauge> $after
@@ -67,6 +81,14 @@ final class AccessMetricsProviderTest extends KernelTestCase
         $this->connection->executeStatement(
             "INSERT INTO scan_attempt (id, event_id, token, outcome, scanned_at) VALUES (?, ?, 't', ?, now())",
             [new Ulid()->toBase32(), $eventId, $outcome],
+        );
+    }
+
+    private function bundle(?string $deliveredAt): void
+    {
+        $this->connection->executeStatement(
+            "INSERT INTO ticket_bundle (order_id, event_id, buyer_email, delivered_at) VALUES (?, ?, 'buyer@example.com', ?)",
+            [new Ulid()->toBase32(), EventId::generate()->toString(), $deliveredAt],
         );
     }
 }

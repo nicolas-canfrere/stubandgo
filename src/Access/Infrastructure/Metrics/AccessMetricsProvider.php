@@ -22,5 +22,13 @@ final readonly class AccessMetricsProvider implements MetricsProviderInterface
         foreach (ScanOutcome::cases() as $outcome) {
             yield new Gauge('stubandgo_scans', 'Ticket scans by outcome.', (int) ($counts[$outcome->value] ?? 0), ['outcome' => $outcome->value]);
         }
+
+        /** @var int|string $undelivered */
+        $undelivered = $this->connection->fetchOne('SELECT COUNT(*) FROM ticket_bundle WHERE delivered_at IS NULL');
+        yield new Gauge(
+            'stubandgo_ticket_bundles_undelivered',
+            'Ticket bundles of paid orders not emailed yet; a lasting value means failed deliveries (see messenger:failed:show).',
+            (int) $undelivered,
+        );
     }
 }

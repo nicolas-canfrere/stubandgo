@@ -1,6 +1,8 @@
 framework:
     messenger:
         default_bus: async.bus
+        # A message still failing after its last retry is kept there, not dropped (messenger:failed:show / retry).
+        failure_transport: failed
         buses:
             # The command log measures the commit too and records a rejection after the rollback.
             command.bus:
@@ -21,7 +23,14 @@ framework:
                 middleware:
                     - App\Shared\Infrastructure\Observability\CorrelationMiddleware
         transports:
-            async: '%env(MESSENGER_TRANSPORT_DSN)%'
+            async:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                # About 1 s, 3 s, 9 s ... then hourly: ten retries outlast an SMTP outage of several hours.
+                retry_strategy:
+                    max_retries: 10
+                    multiplier: 3
+                    max_delay: 3600000
+            failed: '%env(MESSENGER_FAILURE_TRANSPORT_DSN)%'
         routing:
             App\Shared\Infrastructure\Outbox\AsyncMessageInterface: async
 
@@ -29,4 +38,6 @@ when@test:
     framework:
         messenger:
             transports:
-                async: 'in-memory://'
+                async:
+                    dsn: 'in-memory://'
+                failed: 'in-memory://'
