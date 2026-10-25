@@ -49,6 +49,16 @@ nelmio_api_doc:
                         venue: { type: string, example: La Cigale }
                         startsAt: { type: string, format: date-time, description: 'Start in UTC (RFC 3339, Z suffix); the front converts it for display', example: '2026-11-20T19:00:00Z' }
                         organization: { $ref: '#/components/schemas/OrganizationReference' }
+                OrganizationAdmin:
+                    description: An organization as the platform administration sees it.
+                    type: object
+                    required: [id, name, slug, commissionBasisPoints, status]
+                    properties:
+                        id: { type: string, description: ULID of the organization }
+                        name: { type: string, example: Rock Asso }
+                        slug: { type: string, example: demo-rock-asso }
+                        commissionBasisPoints: { type: integer, description: Commission of the platform on each sale, in basis points (0 to 10000), example: 1000 }
+                        status: { type: string, enum: [active, pending_keycloak], description: 'pending_keycloak: not yet provisioned in Keycloak, to be retried.' }
                 PriceTier:
                     type: object
                     required: [id, label, priceCents]

@@ -31,4 +31,11 @@ interface OrganizationRepositoryInterface
     public function findBySlug(Slug $slug): ?Organization;
 
     public function nameExists(OrganizationName $name): bool;
+
+    /**
+     * Every organization, in the alphabetical order of their names.
+     *
+     * @return list<Organization>
+     */
+    public function listByName(): array;
 }

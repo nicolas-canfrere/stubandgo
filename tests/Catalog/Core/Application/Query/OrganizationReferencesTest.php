@@ -70,6 +70,11 @@ final class OrganizationReferencesTest extends TestCase
             {
                 throw new \LogicException('Not used.');
             }
+
+            public function listByName(): array
+            {
+                throw new \LogicException('Not used.');
+            }
         };
         $references = new OrganizationReferences($repository);
 

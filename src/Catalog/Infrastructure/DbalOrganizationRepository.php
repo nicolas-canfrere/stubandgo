@@ -76,6 +76,14 @@ final readonly class DbalOrganizationRepository implements OrganizationRepositor
         return false !== $this->connection->fetchOne('SELECT 1 FROM organization WHERE name = :name', ['name' => $name->toString()]);
     }
 
+    public function listByName(): array
+    {
+        /** @var list<array{id: string, name: string, slug: string, commission_basis_points: int, keycloak_id: string|null, status: string}> $rows */
+        $rows = $this->connection->fetchAllAssociative('SELECT ' . self::COLUMNS . ' FROM organization ORDER BY name, id');
+
+        return array_map($this->hydrate(...), $rows);
+    }
+
     /**
      * @param array{id: string, name: string, slug: string, commission_basis_points: int, keycloak_id: string|null, status: string} $row
      */

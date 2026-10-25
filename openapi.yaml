@@ -139,6 +139,194 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/EventSummary'
+  '/api/platform/organizations/{organizationId}/commission-rate':
+    put:
+      tags:
+        - Platform
+      summary: 'Change the commission rate of an organization.'
+      description: 'Requires the Keycloak access token of a platform administrator (staff realm role platform-admin). The new rate applies to the orders placed afterwards.'
+      operationId: put_catalog_platform_change_commission_rate
+      parameters:
+        -
+          name: organizationId
+          in: path
+          description: 'ULID of the organization.'
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangeCommissionRateRequest'
+      responses:
+        '200':
+          description: 'The organization with its new rate.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationAdmin'
+        '401':
+          description: 'Access token missing or invalid (/problems/unauthorized, with a WWW-Authenticate: Bearer challenge).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: 'The member is not a platform administrator (/problems/forbidden).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: 'No organization has this identifier (/problems/organization_not_found).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: 'Malformed payload (/problems/validation_failed) or a rate outside 0 to 10000 basis points (/problems/invalid_value).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+        -
+          bearerAuth: []
+  /api/platform/organizations:
+    get:
+      tags:
+        - Platform
+      summary: 'List every organization of the platform, by name.'
+      description: 'Requires the Keycloak access token of a platform administrator (staff realm role platform-admin).'
+      operationId: get_catalog_platform_list_organizations
+      responses:
+        '200':
+          description: 'The organizations, in the alphabetical order of their names.'
+          content:
+            application/json:
+              schema:
+                required:
+                  - organizations
+                properties:
+                  organizations: { type: array, items: { $ref: '#/components/schemas/OrganizationAdmin' } }
+                type: object
+        '401':
+          description: 'Access token missing or invalid (/problems/unauthorized, with a WWW-Authenticate: Bearer challenge).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: 'The member is not a platform administrator (/problems/forbidden).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+        -
+          bearerAuth: []
+    post:
+      tags:
+        - Platform
+      summary: 'Create an organization and provision it in Keycloak.'
+      description: 'Requires the Keycloak access token of a platform administrator (staff realm role platform-admin). When Keycloak is unreachable the organization is created anyway and answers with the status pending_keycloak: retry with the provisioning route.'
+      operationId: post_catalog_platform_create_organization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrganizationRequest'
+      responses:
+        '201':
+          description: 'The organization was created, active or pending_keycloak; its URL is in the Location header.'
+          headers:
+            Location:
+              description: 'URL of the organization.'
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationAdmin'
+        '401':
+          description: 'Access token missing or invalid (/problems/unauthorized, with a WWW-Authenticate: Bearer challenge).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: 'The member is not a platform administrator (/problems/forbidden).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: 'The slug or the name is already used by another organization (/problems/organization_slug_taken or /problems/organization_name_taken).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: 'Malformed payload (/problems/validation_failed, with a violations member) or a value that breaks a rule: /problems/invalid_value (name, slug or commission rate).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+        -
+          bearerAuth: []
+  '/api/platform/organizations/{organizationId}/provisioning':
+    post:
+      tags:
+        - Platform
+      summary: 'Provision an organization in Keycloak, or retry it.'
+      description: 'Requires the Keycloak access token of a platform administrator (staff realm role platform-admin). Idempotent: an organization that is already active is returned as is, without calling Keycloak.'
+      operationId: post_catalog_platform_provision_organization
+      parameters:
+        -
+          name: organizationId
+          in: path
+          description: 'ULID of the organization.'
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 'The organization, active.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationAdmin'
+        '401':
+          description: 'Access token missing or invalid (/problems/unauthorized, with a WWW-Authenticate: Bearer challenge).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: 'The member is not a platform administrator (/problems/forbidden).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: 'No organization has this identifier (/problems/organization_not_found).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '502':
+          description: 'Keycloak is unreachable or refused the request (/problems/identity_provider_unavailable); the organization stays pending_keycloak.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+        -
+          bearerAuth: []
   '/api/events/{eventId}/availability':
     get:
       tags:
@@ -440,6 +628,34 @@ components:
         organization:
           $ref: '#/components/schemas/OrganizationReference'
       type: object
+    OrganizationAdmin:
+      description: 'An organization as the platform administration sees it.'
+      required:
+        - id
+        - name
+        - slug
+        - commissionBasisPoints
+        - status
+      properties:
+        id:
+          description: 'ULID of the organization'
+          type: string
+        name:
+          type: string
+          example: 'Rock Asso'
+        slug:
+          type: string
+          example: demo-rock-asso
+        commissionBasisPoints:
+          description: 'Commission of the platform on each sale'
+          type: integer
+        status:
+          description: 'pending_keycloak: not yet provisioned in Keycloak, to be retried.'
+          type: string
+          enum:
+            - active
+            - pending_keycloak
+      type: object
     PriceTier:
       required:
         - id
@@ -546,6 +762,32 @@ components:
           type: string
           example: gKLhZN-ot9fBxtYtPWJNQkFE2j03nIhf5Rfh3Q52pww
       type: object
+    ChangeCommissionRateRequest:
+      required:
+        - commissionBasisPoints
+      properties:
+        commissionBasisPoints:
+          description: 'Commission of the platform on each sale, in basis points (0 to 10000).'
+          type: integer
+      type: object
+    CreateOrganizationRequest:
+      required:
+        - name
+        - slug
+        - commissionBasisPoints
+      properties:
+        name:
+          description: 'Display name of the organization, unique.'
+          type: string
+          example: 'Rock Asso'
+        slug:
+          description: 'URL identifier, unique: 3 to 64 lowercase letters, digits or single hyphens between them.'
+          type: string
+          example: rock-asso
+        commissionBasisPoints:
+          description: 'Commission of the platform on each sale, in basis points (0 to 10000).'
+          type: integer
+      type: object
     PayOrderRequest:
       required:
         - cardNumber
@@ -596,6 +838,9 @@ tags:
   -
     name: Catalog
     description: Catalog
+  -
+    name: Platform
+    description: Platform
   -
     name: Sales
     description: Sales

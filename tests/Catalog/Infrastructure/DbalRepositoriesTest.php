@@ -325,6 +325,21 @@ final class DbalRepositoriesTest extends KernelTestCase
         self::assertSame('timestamp with time zone', $connection->fetchOne("SELECT data_type FROM information_schema.columns WHERE table_name = 'event' AND column_name = 'starts_at'"));
     }
 
+    public function testListByNameReturnsEveryOrganizationInAlphabeticalOrder(): void
+    {
+        foreach (['Zorro Spectacles', 'Alpha Spectacles', 'Milieu Spectacles'] as $name) {
+            $id = OrganizationId::generate();
+            $this->organizations->save(Organization::create($id, OrganizationName::fromString($name), Slug::fromString('list-' . strtolower($id->toString())), CommissionRate::fromBasisPoints(0)));
+        }
+
+        $names = array_map(static fn(Organization $organization): string => $organization->name()->toString(), $this->organizations->listByName());
+
+        $positions = array_map(static fn(string $name): int|false => array_search($name, $names, true), ['Alpha Spectacles', 'Milieu Spectacles', 'Zorro Spectacles']);
+        self::assertSame($positions, array_values(array_filter($positions, is_int(...))));
+        self::assertLessThan($positions[1], $positions[0]);
+        self::assertLessThan($positions[2], $positions[1]);
+    }
+
     private function organization(int $commission = 1000, ?string $keycloakId = null): Organization
     {
         $id = OrganizationId::generate();
