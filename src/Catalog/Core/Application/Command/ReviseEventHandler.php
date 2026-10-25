@@ -29,7 +29,7 @@ final readonly class ReviseEventHandler
             Venue::fromString($command->venue),
             EventInput::startsAt($command->startsAt),
             Capacity::of($command->capacity),
-            EventInput::priceTiers($command->priceTiers),
+            EventInput::revisedPriceTiers($command->priceTiers, $event),
             $this->clock->now(),
         );
         $this->events->save($event);

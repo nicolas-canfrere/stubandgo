@@ -212,10 +212,15 @@ final class DbalRepositoriesTest extends KernelTestCase
 
         $this->revise($event, [new PriceTier($foreign->id(), PriceTierLabel::fromString('Volé'), Money::EUR(1)), new PriceTier(PriceTierId::generate(), PriceTierLabel::fromString('Neuf'), Money::EUR(1))]);
 
+        $connection = self::getContainer()->get(Connection::class);
+        $connection->beginTransaction();
         try {
             $this->events->save($event);
             self::fail('A tier of another event must be refused.');
-        } catch (InvalidValueException) {
+        } catch (InvalidValueException $exception) {
+            // Saving runs inside the command transaction, which the refusal rolls back.
+            $connection->rollBack();
+            self::assertSame('A price tier belongs to another event.', $exception->getMessage());
             $reloadedOther = $this->events->get($other->id());
             $reloaded = $this->events->get($event->id());
             self::assertSame(['Autre'], array_map(static fn(PriceTier $tier): string => $tier->label()->toString(), $reloadedOther->priceTiers()));

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Catalog\UI\Http\Backoffice;
 
-use App\Shared\Identity\PriceTierId;
 use OpenApi\Attributes as OA;
 
 /**
@@ -32,14 +31,14 @@ final readonly class EventRequest
     }
 
     /**
-     * The tiers as the commands carry them: a tier without identifier gets a new one.
+     * The tiers as the revision carries them: a tier without identifier is a new one.
      *
-     * @return list<array{id: string, label: string, priceCents: int}>
+     * @return list<array{id: string|null, label: string, priceCents: int}>
      */
     public function commandPriceTiers(): array
     {
         return array_map(
-            static fn(PriceTierRequest $tier): array => ['id' => $tier->id ?? PriceTierId::generate()->toString(), 'label' => $tier->label, 'priceCents' => $tier->priceCents],
+            static fn(PriceTierRequest $tier): array => ['id' => $tier->id, 'label' => $tier->label, 'priceCents' => $tier->priceCents],
             $this->priceTiers,
         );
     }

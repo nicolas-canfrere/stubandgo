@@ -25,7 +25,7 @@ final class ReviseEventHandlerTest extends AbstractCatalogTestCase
     public function testReviseReplacesEveryFieldAndTheTiersOfADraft(): void
     {
         $organization = $this->createOrganization();
-        [$kept, $removed, $modified, $added] = [PriceTierId::generate()->toString(), PriceTierId::generate()->toString(), PriceTierId::generate()->toString(), PriceTierId::generate()->toString()];
+        [$kept, $removed, $modified] = [PriceTierId::generate()->toString(), PriceTierId::generate()->toString(), PriceTierId::generate()->toString()];
         $eventId = $this->createEvent($organization['id'], '2026-12-01T20:00:00+00:00', priceTiers: [
             ['id' => $kept, 'label' => 'Plein', 'priceCents' => 2500],
             ['id' => $removed, 'label' => 'Réduit', 'priceCents' => 1500],
@@ -34,7 +34,7 @@ final class ReviseEventHandlerTest extends AbstractCatalogTestCase
 
         $this->command(new ReviseEvent($eventId, 'Nouveau titre', 'Nouvelle description', 'Le Zénith', '2027-02-01T21:00:00+01:00', 42, [
             ['id' => $modified, 'label' => 'Mécène', 'priceCents' => 9000],
-            ['id' => $added, 'label' => 'Étudiant', 'priceCents' => 1000],
+            ['id' => null, 'label' => 'Étudiant', 'priceCents' => 1000],
             ['id' => $kept, 'label' => 'Plein', 'priceCents' => 2500],
         ]));
 
@@ -45,6 +45,8 @@ final class ReviseEventHandlerTest extends AbstractCatalogTestCase
         self::assertSame('Le Zénith', $event->venue()->toString());
         self::assertSame('2027-02-01T20:00:00+00:00', $event->startsAt()->format(\DATE_ATOM));
         self::assertSame(42, $event->capacity()->toInt());
+        $added = $event->priceTiers()[1]->id()->toString();
+        self::assertNotContains($added, [$kept, $removed, $modified]);
         self::assertSame(
             [[$modified, 'Mécène', '9000'], [$added, 'Étudiant', '1000'], [$kept, 'Plein', '2500']],
             array_map(static fn(PriceTier $tier): array => [$tier->id()->toString(), $tier->label()->toString(), $tier->price()->getAmount()], $event->priceTiers()),
@@ -107,7 +109,7 @@ final class ReviseEventHandlerTest extends AbstractCatalogTestCase
 
         try {
             $this->command(new ReviseEvent($eventId, 'Nouveau titre', 'Nouvelle description', 'Le Zénith', '2027-02-01T20:00:00+00:00', 42, [
-                ['id' => PriceTierId::generate()->toString(), 'label' => 'Neuf', 'priceCents' => 100],
+                ['id' => null, 'label' => 'Neuf', 'priceCents' => 100],
                 ['id' => $foreign, 'label' => 'Volé', 'priceCents' => 1],
             ]));
             self::fail('A tier of another event must be refused.');
@@ -118,6 +120,52 @@ final class ReviseEventHandlerTest extends AbstractCatalogTestCase
             self::assertSame([[$own, 'Plein']], array_map(static fn(PriceTier $tier): array => [$tier->id()->toString(), $tier->label()->toString()], $event->priceTiers()));
             self::assertSame([[$foreign, 'Autre', '700']], array_map(static fn(PriceTier $tier): array => [$tier->id()->toString(), $tier->label()->toString(), $tier->price()->getAmount()], $this->event($otherId)->priceTiers()));
         }
+    }
+
+    public function testReviseRefusesATierIdentifierUnknownToTheEventAndCreatesNothing(): void
+    {
+        $own = PriceTierId::generate()->toString();
+        $eventId = $this->createEvent($this->createOrganization()['id'], '2026-12-01T20:00:00+00:00', priceTiers: [['id' => $own, 'label' => 'Plein', 'priceCents' => 2500]]);
+        $chosenByTheClient = PriceTierId::generate()->toString();
+
+        try {
+            $this->command(new ReviseEvent($eventId, 'Nouveau titre', 'Nouvelle description', 'Le Zénith', '2027-02-01T20:00:00+00:00', 42, [
+                ['id' => $own, 'label' => 'Plein', 'priceCents' => 2500],
+                ['id' => $chosenByTheClient, 'label' => 'Inventé', 'priceCents' => 1],
+            ]));
+            self::fail('A tier identifier the event does not have must be refused.');
+        } catch (InvalidValueException $exception) {
+            self::assertSame('A price tier to keep is not a tier of the event.', $exception->getMessage());
+            $event = $this->event($eventId);
+            self::assertSame('Concert', $event->title()->toString());
+            self::assertSame([$own], array_map(static fn(PriceTier $tier): string => $tier->id()->toString(), $event->priceTiers()));
+        }
+    }
+
+    public function testAKeptTierMayBeNamedInLowercase(): void
+    {
+        $own = PriceTierId::generate()->toString();
+        $eventId = $this->createEvent($this->createOrganization()['id'], '2026-12-01T20:00:00+00:00', priceTiers: [['id' => $own, 'label' => 'Plein', 'priceCents' => 2500]]);
+
+        $this->command(new ReviseEvent($eventId, 'Nouveau titre', 'Nouvelle description', 'Le Zénith', '2027-02-01T20:00:00+00:00', 42, [
+            ['id' => strtolower($own), 'label' => 'Plein tarif', 'priceCents' => 3000],
+        ]));
+
+        self::assertSame([[$own, 'Plein tarif']], array_map(static fn(PriceTier $tier): array => [$tier->id()->toString(), $tier->label()->toString()], $this->event($eventId)->priceTiers()));
+    }
+
+    public function testEveryNewTierGetsItsOwnIdentifier(): void
+    {
+        $eventId = $this->createEvent($this->createOrganization()['id'], '2026-12-01T20:00:00+00:00');
+
+        $this->command(new ReviseEvent($eventId, 'Nouveau titre', 'Nouvelle description', 'Le Zénith', '2027-02-01T20:00:00+00:00', 42, [
+            ['id' => null, 'label' => 'Plein', 'priceCents' => 2500],
+            ['id' => null, 'label' => 'Réduit', 'priceCents' => 1500],
+        ]));
+
+        $tiers = $this->event($eventId)->priceTiers();
+        self::assertSame(['Plein', 'Réduit'], array_map(static fn(PriceTier $tier): string => $tier->label()->toString(), $tiers));
+        self::assertFalse($tiers[0]->id()->equals($tiers[1]->id()));
     }
 
     public function testAnUnpublishedEventCanBeRevised(): void
@@ -143,7 +191,7 @@ final class ReviseEventHandlerTest extends AbstractCatalogTestCase
     private function revise(string $eventId, string $startsAt = '2027-02-01T20:00:00+00:00'): void
     {
         $this->command(new ReviseEvent($eventId, 'Nouveau titre', 'Nouvelle description', 'Le Zénith', $startsAt, 42, [
-            ['id' => PriceTierId::generate()->toString(), 'label' => 'Plein', 'priceCents' => 2500],
+            ['id' => null, 'label' => 'Plein', 'priceCents' => 2500],
         ]));
     }
 

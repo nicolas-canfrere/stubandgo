@@ -16,7 +16,7 @@ final readonly class PriceTierRequest
         public string $label,
         #[OA\Property(description: 'Price in euro cents.', example: 2500)]
         public int $priceCents,
-        #[OA\Property(description: 'ULID of an existing tier of the event, to keep it; omitted, a new tier is created.', nullable: true)]
+        #[OA\Property(description: 'ULID of an existing tier of the event, to keep it; null or omitted, a new tier is created. Any other identifier is refused (422 /problems/invalid_value).', nullable: true)]
         public ?string $id = null,
     ) {
     }

@@ -8,13 +8,13 @@ use App\Shared\Bus\CommandInterface;
 
 /**
  * Replaces every field of a draft event and its complete list of price tiers: a tier missing from the list is
- * deleted, a tier with a new identifier is created.
+ * deleted, a tier without identifier is created, and an identifier that is not one of a tier of the event is refused.
  */
 final readonly class ReviseEvent implements CommandInterface
 {
     /**
      * @param string                                                  $startsAt   ISO 8601 date-time with offset
-     * @param list<array{id: string, label: string, priceCents: int}> $priceTiers
+     * @param list<array{id: string|null, label: string, priceCents: int}> $priceTiers
      */
     public function __construct(
         public string $eventId,

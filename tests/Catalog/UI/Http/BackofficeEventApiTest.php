@@ -267,6 +267,35 @@ final class BackofficeEventApiTest extends WebTestCase
         self::assertSame('/problems/invalid_value', $problem['type'] ?? null);
     }
 
+    public function testATierIdentifierUnknownToTheEventIsUnprocessableAndCreatesNoTier(): void
+    {
+        $own = PriceTierId::generate()->toString();
+        $eventId = $this->createEvent($this->organization['id'], self::FUTURE, priceTiers: [['id' => $own, 'label' => 'Plein', 'priceCents' => 2500]]);
+        $chosenByTheClient = PriceTierId::generate()->toString();
+
+        $problem = $this->call('PUT', self::EVENTS . '/' . $eventId, $this->adminToken(), [...$this->payload(), 'priceTiers' => [['id' => $chosenByTheClient, 'label' => 'Inventé', 'priceCents' => 1]]]);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame('/problems/invalid_value', $problem['type'] ?? null);
+        self::assertSame([['id' => $own, 'label' => 'Plein', 'priceCents' => 2500]], $this->detailOf($eventId)['priceTiers']);
+    }
+
+    public function testATierWithANullIdentifierIsCreated(): void
+    {
+        $eventId = $this->createEvent($this->organization['id'], self::FUTURE);
+
+        $body = $this->call('PUT', self::EVENTS . '/' . $eventId, $this->adminToken(), [...$this->payload(), 'priceTiers' => [['id' => null, 'label' => 'VIP', 'priceCents' => 9000]]]);
+
+        self::assertResponseStatusCodeSame(200);
+        $tiers = $body['priceTiers'] ?? null;
+        self::assertIsArray($tiers);
+        self::assertCount(1, $tiers);
+        self::assertIsArray($tiers[0]);
+        self::assertSame(['label' => 'VIP', 'priceCents' => 9000], array_diff_key($tiers[0], ['id' => true]));
+        self::assertIsString($tiers[0]['id'] ?? null);
+        self::assertTrue(Ulid::isValid($tiers[0]['id']));
+    }
+
     public function testPublishingMakesTheEventVisibleAndUnpublishingHidesItAgain(): void
     {
         $eventId = $this->createEvent($this->organization['id'], self::FUTURE);

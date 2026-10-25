@@ -39,7 +39,6 @@ final readonly class DbalEventRepository implements EventRepositoryInterface
     public function save(Event $event): void
     {
         $tierIds = array_map(static fn(PriceTier $tier): string => $tier->id()->toString(), $event->priceTiers());
-        $this->assertNoTierOfAnotherEvent($event->id(), $tierIds);
 
         // The organization and the identifier never change: updating no key column only takes a FOR NO KEY UPDATE
         // lock, which the FOR KEY SHARE lock of a concurrent order does not block.
@@ -63,7 +62,8 @@ final readonly class DbalEventRepository implements EventRepositoryInterface
         );
 
         foreach ($event->priceTiers() as $position => $tier) {
-            $this->connection->executeStatement(
+            // A tier of another event is neither inserted nor updated by the guard of the upsert: no row is written.
+            $written = $this->connection->executeStatement(
                 'INSERT INTO price_tier (id, event_id, position, label, price_cents)
                  VALUES (:id, :event_id, :position, :label, :price_cents)
                  ON CONFLICT (id) DO UPDATE SET position = EXCLUDED.position, label = EXCLUDED.label, price_cents = EXCLUDED.price_cents
@@ -76,6 +76,10 @@ final readonly class DbalEventRepository implements EventRepositoryInterface
                     'price_cents' => $tier->price()->getAmount(),
                 ],
             );
+
+            if (0 === $written) {
+                throw new InvalidValueException('A price tier belongs to another event.');
+            }
         }
 
         // Last: the tiers just written are among those the deletion must spare, so a kept tier is updated in place.
@@ -141,22 +145,6 @@ final readonly class DbalEventRepository implements EventRepositoryInterface
         $row = $this->connection->fetchAssociative('SELECT ' . self::EVENT_COLUMNS . ' FROM event WHERE id = :id' . $lock, ['id' => $id->toString()]);
 
         return false === $row ? null : $this->hydrate([$row])[0];
-    }
-
-    /**
-     * @param list<string> $tierIds
-     */
-    private function assertNoTierOfAnotherEvent(EventId $eventId, array $tierIds): void
-    {
-        $foreign = $this->connection->fetchOne(
-            'SELECT 1 FROM price_tier WHERE id IN (:ids) AND event_id <> :event_id',
-            ['ids' => $tierIds, 'event_id' => $eventId->toString()],
-            ['ids' => ArrayParameterType::STRING],
-        );
-
-        if (false !== $foreign) {
-            throw new InvalidValueException('A price tier belongs to another event.');
-        }
     }
 
     /**
