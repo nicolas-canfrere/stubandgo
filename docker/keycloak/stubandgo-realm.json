@@ -347,5 +347,73 @@
       ],
       "optionalClientScopes": []
     }
-  ]
+  ],
+  "components": {
+    "org.keycloak.keys.KeyProvider": [
+      {
+        "name": "rsa-demo-signing",
+        "providerId": "rsa",
+        "subComponents": {},
+        "config": {
+          "priority": [
+            "200"
+          ],
+          "enabled": [
+            "true"
+          ],
+          "active": [
+            "true"
+          ],
+          "algorithm": [
+            "RS256"
+          ],
+          "keyUse": [
+            "SIG"
+          ],
+          "privateKey": [
+            "MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCeK59btRlWgY11/4z/aRJwn1kD+b+q/H5WcFaosZe4m8U+wbPt4qGaUknDe4rqdkeyj5z7fV9uVe+8GwBzJ6k4FEmFrDH6vhxuMUfi9GYsAvYk6AfKJjkS+yyle4B1v96uKR8ejaQ9NBLX+7HUvGokPuRpWFY0dbARfYdCYGqf3n3LkIJOSi61unAzvy3a7iwnyXRmA+5SlB4xKZI5WFSEjYu56OmVspl/gapZdCryzJ1PK3Bu7Vy2wV6iGL28orkTOvUD4rlMwN0b7iuIaQvELSICH/8xUjWZSWXd4DV/Ut8A+q71Wp1VToh+ykGh8SAMiDx7FgWYl+XYm1Pj1UPdAgMBAAECggEABFKO3VO6qImL0yCzurslXNyN8zTdDxAtZ7FUPPH1gn8HSerDPwoFfpEnIOd8aWHoHbIdCSZo+Dvy/EIEpiD8V+L+C2AkUYTmhABmxYYGUMeX8HRC2jxnLOSeWLtiTFV9AWdwSUZ3qZCFv09KkdTAVdM+LL7URES/FgtHKgI2h73izbQIAG++DaG2R4b71GNDf7p8roH/0ecjC/b235yA6c0S2CRb/cQwPcONbBbF7LlTW3elaJRQeyDNbVhqAWMbjpeRdzMj8kDa/cka+o7d0prFQwM/icI7N+jKTelSfaNK6Ei5MvvtdzL2TWZ2RDJozIbrT0Ra9Hb+iXU+JzFtoQKBgQDX0YhQ0jBbGTyC+7IE6RTOAr5HxJK3UA5bofAuHWqIMKi/DJpigXnHVhJPm2haQEs93IkGlx6U5v7+XqfiLnVuD1XxbkcAl6MBqpNmAOvC3V9jDjJ2G+6OvlOW5Sc1nven0F2IZjFsdkqvwNJ/OGn7P3uO4qz9gp6vIJNIjlFO2QKBgQC7nm7dOmLwt4pf9ox3OJbrFOTPAfhi58yp9bVXKZjRkqUZsGwYtrctE5hZywaGTI45vfYxNS9lsY8gEErJSbGpHFGjRzE2b4jhyIhCXHzNMZ4qwhzpbAq/kDP0m0uYZVGPld2wZGeXDY0jKQ+tcwIR8UC7ATsd+xvN4ahVBvXCpQKBgBMgTqRa/E4WfnZdN/mXbnCTbamOkjIMtjkIsPBlSvum1E2aIFR6hQBVcGn9q9HTwNdKpBohamRn1FFWsiopU97dHRC4ZTJ4Pcn4A/gWPM6YL8vnhjFRaGLeGypURJVL8Ua+AIwGAntKQHQy8nSz2zCY/6o6DHqrCMUcbfEQK8SBAoGAGUrzgSl02ySzJ9qx9wSO++QWMH4AgTzkj2kLaFO4QVB2p27sM6y2JwKEQF6pY4OAjPI59UpJOHlmZRktK9OeesDRlKRtUvxYRK/nBqM3Q+ZTf0op4aHqFQcYqfohh8ro4uV+PGBcwrVV+I55iZV+ivKuGkfBM3p9thScv9GvYe0CgYAwAmp6sPWYzUMJEw8H8tKlG12IGEC8qIi+HlhMoEne9mjEFMIRdxuyW1PbSTXLUQvZGcBiwlcWY7T6NSP4bMya8O8ifiaz08GbKlKwGjPMCBc0DzHWcWEfIEK3kVJao2DraX8wT39ul4UQFG1huojCow9mZsLZw3yqj/wMwrvcoA=="
+          ],
+          "certificate": [
+            "MIIDCzCCAfOgAwIBAgIUddG6HLu/g5IZPqN2M2IXFIMzI9swDQYJKoZIhvcNAQELBQAwFDESMBAGA1UEAwwJc3R1YmFuZGdvMCAXDTI2MTAyNTE1MTY0MVoYDzIxMjYxMDAxMTUxNjQxWjAUMRIwEAYDVQQDDAlzdHViYW5kZ28wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCeK59btRlWgY11/4z/aRJwn1kD+b+q/H5WcFaosZe4m8U+wbPt4qGaUknDe4rqdkeyj5z7fV9uVe+8GwBzJ6k4FEmFrDH6vhxuMUfi9GYsAvYk6AfKJjkS+yyle4B1v96uKR8ejaQ9NBLX+7HUvGokPuRpWFY0dbARfYdCYGqf3n3LkIJOSi61unAzvy3a7iwnyXRmA+5SlB4xKZI5WFSEjYu56OmVspl/gapZdCryzJ1PK3Bu7Vy2wV6iGL28orkTOvUD4rlMwN0b7iuIaQvELSICH/8xUjWZSWXd4DV/Ut8A+q71Wp1VToh+ykGh8SAMiDx7FgWYl+XYm1Pj1UPdAgMBAAGjUzBRMB0GA1UdDgQWBBSse4xdtRVG8FpDU8AsNlP+x3u0JTAfBgNVHSMEGDAWgBSse4xdtRVG8FpDU8AsNlP+x3u0JTAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQBZ3anVzkbmL02R1afqMbO/lT0XwG5jgP8sQCB/yYXTTG978PeuXfOYLQPgoWZP3v/v9KgqEmZ20Nam7qQKhfQuR4cUkXaDD07Nje3a65rtTGPCpSQeC6oqGFUQ9xdDzHJyl6OsCnYB1GGqI34YfW93zX/RcuIRYeSAtuSrHKufMF1hI62pVFmG/gaRLLGuKz2x8Ixu+yXaFZ2BjD2M5wQhG0T70pFqaxKUaW/0NMtSn9I1fnN0a1QXSUTK9+0/d/32WGQR7nq/xpjXmUA+dpTkt8ZU1ypVbWLTdrG7e0/bn6b+5cTHZ8Sl7l3/WBOtv1JqyApvYz60Jr5aPC0vghb1"
+          ]
+        }
+      },
+      {
+        "name": "rsa-enc-generated",
+        "providerId": "rsa-enc-generated",
+        "subComponents": {},
+        "config": {
+          "priority": [
+            "100"
+          ],
+          "algorithm": [
+            "RSA-OAEP"
+          ]
+        }
+      },
+      {
+        "name": "hmac-generated-hs512",
+        "providerId": "hmac-generated",
+        "subComponents": {},
+        "config": {
+          "priority": [
+            "100"
+          ],
+          "algorithm": [
+            "HS512"
+          ]
+        }
+      },
+      {
+        "name": "aes-generated",
+        "providerId": "aes-generated",
+        "subComponents": {},
+        "config": {
+          "priority": [
+            "100"
+          ]
+        }
+      }
+    ]
+  }
 }

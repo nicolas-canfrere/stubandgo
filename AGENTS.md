@@ -118,6 +118,10 @@ Europe/Paris happens only for display (front, emails).
   `KEYCLOAK_INTERNAL_URL`, cached in `cache.app` and fetched on the first
   token only (never while the container is built); the test environment
   trusts a static key set instead and never contacts Keycloak.
+- The realm exports under `docker/keycloak/` pin each realm's RS256 signing
+  key (`rsa` KeyProvider `rsa-demo-signing`, demo-only material): a
+  recreated Keycloak container keeps the `kid` the API has cached. Never
+  remove it, or every token fails until the cached key set expires.
 - Routes are anonymous unless they ask for a user (`#[IsGranted]`); there is
   no global `access_control`. A presented token is always validated: an
   invalid one answers 401 even on a public route.

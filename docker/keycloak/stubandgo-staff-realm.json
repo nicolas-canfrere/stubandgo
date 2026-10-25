@@ -161,5 +161,73 @@
       ],
       "optionalClientScopes": []
     }
-  ]
+  ],
+  "components": {
+    "org.keycloak.keys.KeyProvider": [
+      {
+        "name": "rsa-demo-signing",
+        "providerId": "rsa",
+        "subComponents": {},
+        "config": {
+          "priority": [
+            "200"
+          ],
+          "enabled": [
+            "true"
+          ],
+          "active": [
+            "true"
+          ],
+          "algorithm": [
+            "RS256"
+          ],
+          "keyUse": [
+            "SIG"
+          ],
+          "privateKey": [
+            "MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDIqAERExj6gS/GAkpjk9fA+2e2gUWamEjktKtAomnp9Gqoqsv+66WilmS2zUnsUiWWgEX1fL7rOwFjTa3o4xECTGM5NQNqkb/0CsOnWv5ga86Y6j2zTw2Whsr/qAEygPvT8tXbp2Y3Xv4hrif57o2JQ4ttW5kENEL9y5j1MdG0XLCF3olkHoQkn7w+k20QYa0T2a7yYqGknicnOVkcjHUMJS8Xxn5f2ZLRGA19X9ksW5R9JU9AC8jMtOPvnol1lJA0bHZYdZBc2ewvz1FDI8esSV24KVE1e8cK7xeogsqwRIVuqwAow3MplzJpzLTPpAZoydNrGA3pcK4girj2oAeJAgMBAAECggEALM1eV5qlBCHeMd8HDw7OqLc5pAVfLjJ8bBxu9GKPNX6uZfSk0cl51UCxQiO6Mrrwy5beh/6PfmRRXgPVJd+1R4cYzIgquBvM+UeCAhcOHydTHM+IcUXgadC0+Lphcg5crClXWNEawJhEM+733BVIovJi6kr+cnLc1mAkSfMSuKtoPXwQ8mmpoAAA+NO5QpJSY3YBP++zcR94kat5JfpthZxl9zlIgZg+n+L4DX3sTFTE3gYEM/n2u1ve19HWQUZmZlNzs4wOfo+HJkWIS3WbLVUqODSbmUlvrVvqrlqJM+ktwg+V2erKG8pLLSdmdSkS7AlHgmz2P+uBmGDUyY8tUQKBgQDn/jrNGLfrRpjf4j0ARKbzL0Q6SrfMu/+w/vyKlOyP+8IpBM3fV8hQ7bXsSRsbxzXC6b1trE0nIaRdWpy8gqgx3RN823MufeEBDa95UMcHNxzPpRb5kd2yCWRmbNrvhboxaR6WNXgQ8+AQsfhvNK1BoQSN2nHdUPk26YvT2ptQlQKBgQDda6AN2LHgTdeJwO/98be8OTdfzWMCYWdpPl4aNDeeGtUhr/bb5dEwHH4+qD3H1cKM3DiE33D6RfO+TuBZcmnLMrLhHkMhJbP6GENQGbolFpvzm3agGqIkNmZ+vRPkx8sm4ZLIkge7LYDYooct9c38sQYh7vjtjtTTbnJJgTVaJQKBgCcdnHh8VHZc/uWw1aw35xZVv+E8O+VPRXtoYthS59gXENOttbCUsnfCvMvMP7/dRNlKY+AcDx4r8/SxlH/MX+OYbPK+ZZtPKiLtVcrUrdovlrIEGe2WhJTCNKV4cSm1mIFAQiH9ffMNy5fFCihl71iDd6sbS9uPDZYOpr7fuxRJAoGAPks3Pm4GrTp5N1JGssU8kgHu6E8aWeMZeuyHAQxL0XlvGQkuhHNFxSlfAzXGG+Cx2Xtjk05htKfViWcbi067IOXkmZ0v+bVnyybkWTbDvgd8XK8SUrzrfRCpCWMco7LqHsg7yZ37+tc0dr5TFcUf7MXJGebntb4HdmyOTsvBPNkCgYASP+cwB2GHUiEYPlaSHHlNtfUOrotXAxEN0fOQWDDD40AvTXakdLR+fCYy108jBCk9T9zJeSDKOT74PEUjJd80eUEaKF1Xv1J4cV3R0/FA8J6WIGGn/u9kx//pCcLRvapIZcLVdCuN/yUZHbYynVgY3ImsgKaSxfEZMgMIKS+kxA=="
+          ],
+          "certificate": [
+            "MIIDFzCCAf+gAwIBAgIUDmebWJBE1ZYabD0V1upgcW3lOXswDQYJKoZIhvcNAQELBQAwGjEYMBYGA1UEAwwPc3R1YmFuZGdvLXN0YWZmMCAXDTI2MTAyNTE1MTY0MVoYDzIxMjYxMDAxMTUxNjQxWjAaMRgwFgYDVQQDDA9zdHViYW5kZ28tc3RhZmYwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDIqAERExj6gS/GAkpjk9fA+2e2gUWamEjktKtAomnp9Gqoqsv+66WilmS2zUnsUiWWgEX1fL7rOwFjTa3o4xECTGM5NQNqkb/0CsOnWv5ga86Y6j2zTw2Whsr/qAEygPvT8tXbp2Y3Xv4hrif57o2JQ4ttW5kENEL9y5j1MdG0XLCF3olkHoQkn7w+k20QYa0T2a7yYqGknicnOVkcjHUMJS8Xxn5f2ZLRGA19X9ksW5R9JU9AC8jMtOPvnol1lJA0bHZYdZBc2ewvz1FDI8esSV24KVE1e8cK7xeogsqwRIVuqwAow3MplzJpzLTPpAZoydNrGA3pcK4girj2oAeJAgMBAAGjUzBRMB0GA1UdDgQWBBSHNvgP4yLBT9f3umW1C85faUgnZDAfBgNVHSMEGDAWgBSHNvgP4yLBT9f3umW1C85faUgnZDAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQBbjU47WiEmBs2D67k1rTkkPZMnR5Vehh/vYe90JEePSnPgLPBNt0P2vNFbLUIvFK6+vD4AZWJHQkPIAPcd5/uJDlRdizg6DrAHkzwhKs20nDAX4+VJExCgI6IglFdPzwoGceRgxn0Juz8cWdhuIBYhCxWHbZdbDpGH8WqZ4UQZl+vLV3vFYStSisJcM3sn4vBVJ3U6f95ggWSIMA6DZ/X4pYpdWVi1X8yYlvjs7J5a1bayOtEJrYyJF0JLI75uPLlm+sklZ00krLkLQr0+PqH1dZjCjm+LaeNmzgBJgtPyOj9Pg4CFk8w7w6QmyCybFffdhMpalBOAvT3RDjBLmYqy"
+          ]
+        }
+      },
+      {
+        "name": "rsa-enc-generated",
+        "providerId": "rsa-enc-generated",
+        "subComponents": {},
+        "config": {
+          "priority": [
+            "100"
+          ],
+          "algorithm": [
+            "RSA-OAEP"
+          ]
+        }
+      },
+      {
+        "name": "hmac-generated-hs512",
+        "providerId": "hmac-generated",
+        "subComponents": {},
+        "config": {
+          "priority": [
+            "100"
+          ],
+          "algorithm": [
+            "HS512"
+          ]
+        }
+      },
+      {
+        "name": "aes-generated",
+        "providerId": "aes-generated",
+        "subComponents": {},
+        "config": {
+          "priority": [
+            "100"
+          ]
+        }
+      }
+    ]
+  }
 }
