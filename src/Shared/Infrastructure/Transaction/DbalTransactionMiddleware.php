@@ -5,14 +5,17 @@ declare(strict_types=1);
 namespace App\Shared\Infrastructure\Transaction;
 
 use Doctrine\DBAL\Connection;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Middleware\MiddlewareInterface;
 use Symfony\Component\Messenger\Middleware\StackInterface;
 
 final readonly class DbalTransactionMiddleware implements MiddlewareInterface
 {
-    public function __construct(private Connection $connection)
-    {
+    public function __construct(
+        private Connection $connection,
+        private LoggerInterface $logger,
+    ) {
     }
 
     public function handle(Envelope $envelope, StackInterface $stack): Envelope
@@ -38,13 +41,14 @@ final readonly class DbalTransactionMiddleware implements MiddlewareInterface
     }
 
     /**
-     * A failing rollback must not hide the handler exception that caused it.
+     * A failing rollback must not hide the handler exception that caused it: it is only logged.
      */
     private function rollBackQuietly(): void
     {
         try {
             $this->connection->rollBack();
-        } catch (\Throwable) {
+        } catch (\Throwable $exception) {
+            $this->logger->warning('transaction.rollback_failed', ['exception' => $exception]);
         }
     }
 }

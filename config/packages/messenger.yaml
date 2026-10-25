@@ -2,15 +2,24 @@ framework:
     messenger:
         default_bus: async.bus
         buses:
+            # The command log measures the commit too and records a rejection after the rollback.
             command.bus:
                 middleware:
+                    - App\Shared\Infrastructure\Observability\CorrelationMiddleware
+                    - App\Shared\Infrastructure\Observability\CommandLoggingMiddleware
                     - App\Shared\Infrastructure\Transaction\DbalTransactionMiddleware
-            query.bus: ~
+            query.bus:
+                middleware:
+                    - App\Shared\Infrastructure\Observability\CorrelationMiddleware
             event.bus:
                 default_middleware:
                     enabled: true
                     allow_no_handlers: true
-            async.bus: ~
+                middleware:
+                    - App\Shared\Infrastructure\Observability\CorrelationMiddleware
+            async.bus:
+                middleware:
+                    - App\Shared\Infrastructure\Observability\CorrelationMiddleware
         transports:
             async: '%env(MESSENGER_TRANSPORT_DSN)%'
         routing:

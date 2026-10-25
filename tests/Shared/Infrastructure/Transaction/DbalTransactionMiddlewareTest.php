@@ -6,7 +6,11 @@ namespace App\Tests\Shared\Infrastructure\Transaction;
 
 use App\Shared\Infrastructure\Transaction\DbalTransactionMiddleware;
 use Doctrine\DBAL\Connection;
+use Monolog\Handler\TestHandler;
+use Monolog\Level;
+use Monolog\Logger;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\NullLogger;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Middleware\MiddlewareInterface;
 use Symfony\Component\Messenger\Middleware\StackInterface;
@@ -21,7 +25,7 @@ final class DbalTransactionMiddlewareTest extends TestCase
         $connection->expects(self::never())->method('rollBack');
 
         $envelope = new Envelope(new \stdClass());
-        $result = new DbalTransactionMiddleware($connection)->handle($envelope, $this->stack(static fn(Envelope $e): Envelope => $e));
+        $result = new DbalTransactionMiddleware($connection, new NullLogger())->handle($envelope, $this->stack(static fn(Envelope $e): Envelope => $e));
 
         self::assertSame($envelope, $result);
     }
@@ -36,7 +40,7 @@ final class DbalTransactionMiddlewareTest extends TestCase
         $failure = new \RuntimeException('boom');
 
         try {
-            new DbalTransactionMiddleware($connection)->handle(
+            new DbalTransactionMiddleware($connection, new NullLogger())->handle(
                 new Envelope(new \stdClass()),
                 $this->stack(static fn(): never => throw $failure),
             );
@@ -48,13 +52,15 @@ final class DbalTransactionMiddlewareTest extends TestCase
 
     public function testItRethrowsTheHandlerExceptionWhenRollbackFails(): void
     {
+        $rollbackFailure = new \LogicException('rollback failed');
         $connection = $this->createMock(Connection::class);
-        $connection->expects(self::once())->method('rollBack')->willThrowException(new \LogicException('rollback failed'));
+        $connection->expects(self::once())->method('rollBack')->willThrowException($rollbackFailure);
+        $logs = new TestHandler();
 
         $failure = new \RuntimeException('boom');
 
         try {
-            new DbalTransactionMiddleware($connection)->handle(
+            new DbalTransactionMiddleware($connection, new Logger('test', [$logs]))->handle(
                 new Envelope(new \stdClass()),
                 $this->stack(static fn(): never => throw $failure),
             );
@@ -62,6 +68,12 @@ final class DbalTransactionMiddlewareTest extends TestCase
         } catch (\RuntimeException $caught) {
             self::assertSame($failure, $caught);
         }
+
+        $records = $logs->getRecords();
+        self::assertCount(1, $records);
+        self::assertSame(Level::Warning, $records[0]->level);
+        self::assertSame('transaction.rollback_failed', $records[0]->message);
+        self::assertSame(['exception' => $rollbackFailure], $records[0]->context);
     }
 
     public function testItDoesNotRollBackWhenTheCommitItselfFails(): void
@@ -73,7 +85,7 @@ final class DbalTransactionMiddlewareTest extends TestCase
         $connection->expects(self::never())->method('rollBack');
 
         try {
-            new DbalTransactionMiddleware($connection)->handle(
+            new DbalTransactionMiddleware($connection, new NullLogger())->handle(
                 new Envelope(new \stdClass()),
                 $this->stack(static fn(Envelope $e): Envelope => $e),
             );

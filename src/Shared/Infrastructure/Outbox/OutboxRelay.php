@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Shared\Infrastructure\Outbox;
 
+use App\Shared\Infrastructure\Observability\CorrelationStamp;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 
@@ -28,20 +30,24 @@ class OutboxRelay
      * Publishes up to $limit pending messages, oldest first, and returns how many were relayed.
      * Rows that cannot be rebuilt are quarantined (failed_at, failure_reason) instead of blocking the outbox.
      * Select, dispatch and updates share one transaction so the row locks last until the batch is marked.
+     * Each message carries the trace of the request that stored it.
      */
     public function relayBatch(int $limit = 50): int
     {
         return $this->connection->transactional(function () use ($limit): int {
-            /** @var list<array{id: string, message_class: string, payload: string}> $rows */
+            /** @var list<array{id: string, message_class: string, payload: string, trace_parent: ?string}> $rows */
             $rows = $this->connection->fetchAllAssociative(
-                'SELECT id, message_class, payload FROM outbox_message WHERE published_at IS NULL AND failed_at IS NULL ORDER BY created_at, id LIMIT :limit FOR UPDATE SKIP LOCKED',
+                'SELECT id, message_class, payload, trace_parent FROM outbox_message WHERE published_at IS NULL AND failed_at IS NULL ORDER BY created_at, id LIMIT :limit FOR UPDATE SKIP LOCKED',
                 ['limit' => $limit],
             );
 
             $messages = [];
             foreach ($rows as $row) {
                 try {
-                    $messages[$row['id']] = $this->denormalize($row['message_class'], $row['payload']);
+                    $messages[$row['id']] = new Envelope(
+                        $this->denormalize($row['message_class'], $row['payload']),
+                        null === $row['trace_parent'] ? [] : [new CorrelationStamp($row['trace_parent'])],
+                    );
                 } catch (\Throwable $exception) {
                     $this->quarantine($row['id'], $row['message_class'], $exception);
                 }

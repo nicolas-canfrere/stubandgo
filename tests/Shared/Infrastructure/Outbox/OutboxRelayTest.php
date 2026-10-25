@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Tests\Shared\Infrastructure\Outbox;
 
 use App\Shared\Bus\CommandBusInterface;
+use App\Shared\Infrastructure\Observability\CorrelationContext;
+use App\Shared\Infrastructure\Observability\CorrelationStamp;
+use App\Shared\Infrastructure\Observability\TraceParent;
 use App\Shared\Infrastructure\Outbox\OutboxRelay;
 use App\Shared\Infrastructure\Outbox\OutboxWriterInterface;
 use App\Tests\Shared\Infrastructure\Outbox\Fixtures\OutboxFixtureMessage;
@@ -148,6 +151,40 @@ final class OutboxRelayTest extends KernelTestCase
         self::assertEqualsCanonicalizing(['text' => 'a', 'number' => 1, 'tags' => ['t']], json_decode($row['payload'], true));
         self::assertNotNull($row['created_at']);
         self::assertNull($row['published_at']);
+    }
+
+    public function testWriterStoresTheCurrentTraceParent(): void
+    {
+        $traceParent = TraceParent::generate();
+        self::getContainer()->get(CorrelationContext::class)->use($traceParent);
+
+        $this->writer->store(new OutboxFixtureMessage('a', 1));
+
+        self::assertSame($traceParent->toHeader(), $this->connection->fetchOne('SELECT trace_parent FROM outbox_message'));
+    }
+
+    public function testRelayedMessageCarriesTheTraceParentOfItsRow(): void
+    {
+        $stored = TraceParent::generate();
+        $context = self::getContainer()->get(CorrelationContext::class);
+        $context->use($stored);
+        $this->writer->store(new OutboxFixtureMessage('a', 1));
+        $context->use(TraceParent::generate());
+
+        $this->relay->relayBatch();
+
+        self::assertEquals([new CorrelationStamp($stored->toHeader())], $this->transport->getSent()[0]->all(CorrelationStamp::class));
+    }
+
+    public function testRowWithoutTraceParentIsRelayedWithTheCurrentOne(): void
+    {
+        $this->insertRow('2026-01-01 00:00:00+00', OutboxFixtureMessage::class, ['text' => 'a', 'number' => 1, 'tags' => []]);
+        $current = TraceParent::generate();
+        self::getContainer()->get(CorrelationContext::class)->use($current);
+
+        $this->relay->relayBatch();
+
+        self::assertEquals([new CorrelationStamp($current->toHeader())], $this->transport->getSent()[0]->all(CorrelationStamp::class));
     }
 
     public function testPoisonRowIsQuarantinedAndGoodRowsAreNotResent(): void
