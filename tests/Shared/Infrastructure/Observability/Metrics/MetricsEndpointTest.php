@@ -29,6 +29,25 @@ final class MetricsEndpointTest extends WebTestCase
         self::assertSame('', $client->getResponse()->getContent());
     }
 
+    public function testApiDocDescribesTheMetricsEndpoint(): void
+    {
+        $client = self::createClient();
+
+        $client->request('GET', '/api/doc.json');
+
+        self::assertResponseIsSuccessful();
+        $doc = json_decode((string) $client->getResponse()->getContent(), true);
+        self::assertIsArray($doc);
+        self::assertIsArray($doc['paths']);
+        self::assertIsArray($doc['paths']['/metrics'] ?? null);
+        self::assertSame(['get'], array_keys($doc['paths']['/metrics']));
+        self::assertIsArray($doc['paths']['/metrics']['get']);
+        self::assertIsArray($doc['paths']['/metrics']['get']['responses']);
+        self::assertIsArray($doc['paths']['/metrics']['get']['responses']['200'] ?? null);
+        self::assertIsArray($doc['paths']['/metrics']['get']['responses']['200']['content'] ?? null);
+        self::assertSame(['text/plain; version=0.0.4'], array_keys($doc['paths']['/metrics']['get']['responses']['200']['content']));
+    }
+
     public function testMetricsEndpointExposesEveryProvider(): void
     {
         $client = self::createClient();

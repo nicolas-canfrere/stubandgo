@@ -299,6 +299,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Problem'
+  /health:
+    get:
+      tags:
+        - Observability
+      summary: 'Report the health of the database, RabbitMQ, the outbox and the worker.'
+      description: 'Not cached. This route is not protected in L1.'
+      operationId: get_observability_health
+      responses:
+        '200':
+          description: 'Every check passes.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthReport'
+        '503':
+          description: 'At least one check fails.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthReport'
+  /metrics:
+    get:
+      tags:
+        - Observability
+      summary: 'Expose the application gauges for Prometheus.'
+      description: 'Prometheus text exposition format 0.0.4: orders by status, seats taken per event, outbox backlog, scans by outcome, undelivered ticket bundles, worker heartbeat. This route is not protected in L1.'
+      operationId: get_observability_metrics
+      responses:
+        '200':
+          description: 'The current value of every gauge.'
+          content:
+            'text/plain; version=0.0.4':
+              schema:
+                type: string
+                example: "# HELP stubandgo_scans Ticket scans by outcome.\n# TYPE stubandgo_scans gauge\nstubandgo_scans{outcome=\"valid\"} 12\n"
 components:
   schemas:
     Problem:
@@ -412,6 +447,34 @@ components:
           items:
             $ref: '#/components/schemas/PriceTier'
       type: object
+    HealthCheck:
+      required:
+        - healthy
+        - detail
+      properties:
+        healthy:
+          type: boolean
+        detail:
+          type: string
+          example: 'Last beat 3 s ago.'
+      type: object
+    HealthReport:
+      description: 'Health report, not a problem; the same shape answers 200 and 503.'
+      required:
+        - status
+        - checks
+      properties:
+        status:
+          type: string
+          enum:
+            - ok
+            - degraded
+        checks:
+          description: 'One entry per check (database, rabbitmq, outbox, worker).'
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/HealthCheck'
+      type: object
     OrganizationCatalog:
       required:
         - slug
@@ -486,4 +549,7 @@ tags:
   -
     name: Sales
     description: Sales
+  -
+    name: Observability
+    description: Observability
 

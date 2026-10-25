@@ -54,6 +54,22 @@ nelmio_api_doc:
                         priceTiers:
                             type: array
                             items: { $ref: '#/components/schemas/PriceTier' }
+                HealthCheck:
+                    type: object
+                    required: [healthy, detail]
+                    properties:
+                        healthy: { type: boolean }
+                        detail: { type: string, example: 'Last beat 3 s ago.' }
+                HealthReport:
+                    description: Health report, not a problem; the same shape answers 200 and 503.
+                    type: object
+                    required: [status, checks]
+                    properties:
+                        status: { type: string, enum: [ok, degraded] }
+                        checks:
+                            description: One entry per check (database, rabbitmq, outbox, worker).
+                            type: object
+                            additionalProperties: { $ref: '#/components/schemas/HealthCheck' }
                 OrganizationCatalog:
                     type: object
                     required: [slug, name, events]
@@ -67,3 +83,4 @@ nelmio_api_doc:
         default:
             path_patterns:
                 - ^/api(?!/doc)
+                - ^/(health|metrics)$

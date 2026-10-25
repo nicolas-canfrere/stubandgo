@@ -44,6 +44,24 @@ final class HealthEndpointTest extends WebTestCase
         }
     }
 
+    public function testApiDocDescribesTheHealthEndpoint(): void
+    {
+        $this->client->request('GET', '/api/doc.json');
+
+        self::assertResponseIsSuccessful();
+        $doc = json_decode((string) $this->client->getResponse()->getContent(), true);
+        self::assertIsArray($doc);
+        self::assertIsArray($doc['paths']);
+        self::assertIsArray($doc['paths']['/health'] ?? null);
+        self::assertSame(['get'], array_keys($doc['paths']['/health']));
+        self::assertIsArray($doc['paths']['/health']['get']);
+        self::assertIsArray($doc['paths']['/health']['get']['responses']);
+        self::assertSame(['200', '503'], array_map('strval', array_keys($doc['paths']['/health']['get']['responses'])));
+        self::assertIsArray($doc['components']);
+        self::assertIsArray($doc['components']['schemas']);
+        self::assertArrayHasKey('HealthReport', $doc['components']['schemas']);
+    }
+
     public function testHealthReturns503WhenWorkerSilentFor61Seconds(): void
     {
         $this->beatSecondsAgo(61);
