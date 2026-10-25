@@ -14,7 +14,7 @@ help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  %-14s %s\n", $$1, $$2}'
 
 install: ## Install PHP dependencies with Composer
-	$(COMPOSER) composer:$(COMPOSER_VERSION) install
+	$(COMPOSER) composer:$(COMPOSER_VERSION) install --ignore-platform-reqs
 
 composer-cli: ## Open a shell in the Composer container
 	$(COMPOSER) --interactive --tty composer:$(COMPOSER_VERSION) sh
