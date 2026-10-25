@@ -53,7 +53,7 @@ final class SalesUseCasesTest extends AbstractSalesTestCase
             new OrderStatusView($orderId, 'pending', $eventId, [
                 new OrderLineView($full, 2, 2500),
                 new OrderLineView($reduced, 1, 1000),
-            ], 6000),
+            ], 6000, new \DateTimeImmutable(self::NOW)->modify('+15 minutes')),
             $this->orderStatus($orderId),
         );
         self::assertEquals(new EventAvailabilityView($eventId, 7), $this->ask(new GetEventAvailability($eventId)));

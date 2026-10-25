@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Sales\Core\Application\Query;
 
 use App\Sales\Core\Domain\Order;
+use App\Sales\Core\Domain\OrderStatus;
 use App\Sales\Core\Domain\ValueObject\PricedOrderLine;
 
 /**
@@ -21,6 +22,7 @@ final readonly class OrderStatusView
         public string $eventId,
         public array $lines,
         public int $totalCents,
+        public ?\DateTimeImmutable $expiresAt,
     ) {
     }
 
@@ -39,6 +41,7 @@ final readonly class OrderStatusView
                 $order->lines(),
             ),
             (int) $order->amounts()->total()->getAmount(),
+            OrderStatus::Pending === $order->status() ? $order->expiresAt() : null,
         );
     }
 }

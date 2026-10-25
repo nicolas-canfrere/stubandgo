@@ -290,8 +290,59 @@ final class SalesApiTest extends WebTestCase
                 ['priceTierId' => $event['priceTierIds'][1], 'quantity' => 1, 'unitPriceCents' => 1000],
             ],
             'totalCents' => 6000,
+            'expiresAt' => '2026-10-24T12:15:00Z',
         ], $status);
         self::assertStringNotContainsString($email, (string) $this->client->getResponse()->getContent());
+    }
+
+    public function testPendingOrderExposesItsExpiryInUtc(): void
+    {
+        $orderId = $this->placeOrder();
+
+        $status = $this->send('GET', '/api/orders/' . $orderId);
+
+        self::assertIsArray($status);
+        self::assertSame('2026-10-24T12:15:00Z', $status['expiresAt']);
+    }
+
+    public function testPaidOrderHasNoExpiry(): void
+    {
+        $orderId = $this->placeOrder();
+        $this->send('POST', '/api/orders/' . $orderId . '/payment', ['cardNumber' => self::ACCEPTED_CARD]);
+
+        $status = $this->send('GET', '/api/orders/' . $orderId);
+
+        self::assertIsArray($status);
+        self::assertSame('paid', $status['status']);
+        self::assertArrayHasKey('expiresAt', $status);
+        self::assertNull($status['expiresAt']);
+    }
+
+    public function testApiDocDeclaresProblemExtensionMembersAndOrderExpiry(): void
+    {
+        $doc = $this->send('GET', '/api/doc.json');
+        self::assertIsArray($doc);
+
+        $problem = $this->docNode($doc, 'components', 'schemas', 'Problem', 'properties');
+        self::assertIsArray($problem);
+        self::assertSame('array', $this->docNode($problem, 'violations', 'type'));
+        self::assertSame(['propertyPath', 'message'], $this->docNode($problem, 'violations', 'items', 'required'));
+        self::assertSame('string', $this->docNode($problem, 'violations', 'items', 'properties', 'propertyPath', 'type'));
+        self::assertSame('string', $this->docNode($problem, 'violations', 'items', 'properties', 'message', 'type'));
+        self::assertSame(['pending', 'paid', 'failed', 'expired'], $this->docNode($problem, 'orderStatus', 'enum'));
+        $required = $this->docNode($doc, 'components', 'schemas', 'Problem', 'required');
+        self::assertIsArray($required);
+        self::assertNotContains('violations', $required);
+        self::assertNotContains('orderStatus', $required);
+
+        $order = $this->docNode($doc, 'paths', '/api/orders/{orderId}', 'get', 'responses', '200', 'content', 'application/json', 'schema');
+        self::assertIsArray($order);
+        self::assertSame('string', $this->docNode($order, 'properties', 'expiresAt', 'type'));
+        self::assertSame('date-time', $this->docNode($order, 'properties', 'expiresAt', 'format'));
+        self::assertTrue($this->docNode($order, 'properties', 'expiresAt', 'nullable'));
+        $orderRequired = $this->docNode($order, 'required');
+        self::assertIsArray($orderRequired);
+        self::assertContains('expiresAt', $orderRequired);
     }
 
     public function testUnknownOrderReturns404(): void

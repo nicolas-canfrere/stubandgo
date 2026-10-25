@@ -19,6 +19,16 @@ nelmio_api_doc:
                         status: { type: integer, example: 404 }
                         detail: { type: string, example: 'Organization with slug "unknown" not found.' }
                         instance: { type: string, example: /api/organizations/unknown }
+                        violations:
+                            type: array
+                            description: Present on /problems/validation_failed only, one entry per rejected payload property.
+                            items:
+                                type: object
+                                required: [propertyPath, message]
+                                properties:
+                                    propertyPath: { type: string, example: lines[0].quantity }
+                                    message: { type: string, example: This value should be positive. }
+                        orderStatus: { type: string, enum: [pending, paid, failed, expired], description: 'Present on payment problems (payment_declined, order_expired): the resulting order status.', example: failed }
                 OrganizationReference:
                     type: object
                     required: [slug]

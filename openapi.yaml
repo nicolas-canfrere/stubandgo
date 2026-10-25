@@ -183,12 +183,14 @@ paths:
                   - eventId
                   - lines
                   - totalCents
+                  - expiresAt
                 properties:
                   id: { type: string }
                   status: { type: string, enum: [pending, paid, failed, expired] }
                   eventId: { type: string }
                   lines: { type: array, items: { properties: { priceTierId: { type: string }, quantity: { type: integer }, unitPriceCents: { type: integer } }, type: object } }
                   totalCents: { description: 'Total in euro cents.', type: integer }
+                  expiresAt: { description: 'Payment deadline in UTC (RFC 3339, Z suffix); null unless the order is pending.', type: string, format: date-time, example: '2026-10-24T12:15:00Z', nullable: true }
                 type: object
         '404':
           description: 'The order does not exist (problem type /problems/order_not_found).'
@@ -360,6 +362,30 @@ components:
         instance:
           type: string
           example: /api/organizations/unknown
+        violations:
+          description: 'Present on /problems/validation_failed only, one entry per rejected payload property.'
+          type: array
+          items:
+            required:
+              - propertyPath
+              - message
+            properties:
+              propertyPath:
+                type: string
+                example: 'lines[0].quantity'
+              message:
+                type: string
+                example: 'This value should be positive.'
+            type: object
+        orderStatus:
+          description: 'Present on payment problems (payment_declined, order_expired): the resulting order status.'
+          type: string
+          example: failed
+          enum:
+            - pending
+            - paid
+            - failed
+            - expired
       type: object
     OrganizationReference:
       required:

@@ -26,7 +26,7 @@ final readonly class GetOrderStatusController
                 response: 200,
                 description: 'The order status.',
                 content: new OA\JsonContent(
-                    required: ['id', 'status', 'eventId', 'lines', 'totalCents'],
+                    required: ['id', 'status', 'eventId', 'lines', 'totalCents', 'expiresAt'],
                     properties: [
                         new OA\Property(property: 'id', type: 'string'),
                         new OA\Property(property: 'status', type: 'string', enum: ['pending', 'paid', 'failed', 'expired']),
@@ -40,6 +40,7 @@ final readonly class GetOrderStatusController
                             type: 'object',
                         )),
                         new OA\Property(property: 'totalCents', type: 'integer', description: 'Total in euro cents.'),
+                        new OA\Property(property: 'expiresAt', type: 'string', format: 'date-time', nullable: true, description: 'Payment deadline in UTC (RFC 3339, Z suffix); null unless the order is pending.', example: '2026-10-24T12:15:00Z'),
                     ],
                 ),
             ),
@@ -65,6 +66,7 @@ final readonly class GetOrderStatusController
             'eventId' => $order->eventId,
             'lines' => $order->lines,
             'totalCents' => $order->totalCents,
+            'expiresAt' => $order->expiresAt?->format('Y-m-d\TH:i:sp'),
         ]);
     }
 }
