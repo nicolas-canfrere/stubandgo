@@ -27,9 +27,9 @@ interface EventRepositoryInterface
     public function listPublishedStartingAfter(\DateTimeImmutable $now): array;
 
     /**
-     * Published events of an organization, by start date then identifier.
+     * Published events of an organization starting strictly after $now, by start date then identifier.
      *
      * @return list<Event>
      */
-    public function listPublishedByOrganization(OrganizationId $organizationId): array;
+    public function listPublishedByOrganization(OrganizationId $organizationId, \DateTimeImmutable $now): array;
 }

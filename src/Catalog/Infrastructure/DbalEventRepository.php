@@ -95,12 +95,12 @@ final readonly class DbalEventRepository implements EventRepositoryInterface
         return $this->hydrate($rows);
     }
 
-    public function listPublishedByOrganization(OrganizationId $organizationId): array
+    public function listPublishedByOrganization(OrganizationId $organizationId, \DateTimeImmutable $now): array
     {
         /** @var list<EventRow> $rows */
         $rows = $this->connection->fetchAllAssociative(
-            'SELECT ' . self::EVENT_COLUMNS . " FROM event WHERE status = 'published' AND organization_id = :organization_id ORDER BY starts_at, id",
-            ['organization_id' => $organizationId->toString()],
+            'SELECT ' . self::EVENT_COLUMNS . " FROM event WHERE status = 'published' AND organization_id = :organization_id AND starts_at > :now ORDER BY starts_at, id",
+            ['organization_id' => $organizationId->toString(), 'now' => $now->format(self::TIMESTAMP_FORMAT)],
         );
 
         return $this->hydrate($rows);

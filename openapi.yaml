@@ -85,7 +85,8 @@ paths:
     get:
       tags:
         - Catalog
-      summary: 'Show an organization and its published events, earliest first.'
+      summary: 'Show an organization and its upcoming published events, earliest first.'
+      description: 'Lists only the published events of the organization that have not started yet.'
       operationId: get_catalog_get_organization_catalog
       parameters:
         -

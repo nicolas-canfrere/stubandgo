@@ -18,7 +18,8 @@ final readonly class GetOrganizationCatalogController
 
     #[Route('/api/organizations/{slug}', name: 'catalog_get_organization_catalog', methods: 'GET')]
     #[OA\Get(
-        summary: 'Show an organization and its published events, earliest first.',
+        summary: 'Show an organization and its upcoming published events, earliest first.',
+        description: 'Lists only the published events of the organization that have not started yet.',
         tags: ['Catalog'],
         parameters: [new OA\Parameter(name: 'slug', description: 'URL identifier of the organization.', in: 'path', required: true, schema: new OA\Schema(type: 'string'))],
         responses: [

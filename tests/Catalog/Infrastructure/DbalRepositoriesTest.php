@@ -150,23 +150,26 @@ final class DbalRepositoriesTest extends KernelTestCase
         }
     }
 
-    public function testListPublishedByOrganizationIsScopedPublishedOnlyAndOrdered(): void
+    public function testListPublishedByOrganizationIsScopedUpcomingPublishedOnlyAndOrdered(): void
     {
         $organization = $this->organization();
         $other = $this->organization();
+        $now = new \DateTimeImmutable('2026-10-24T12:00:00+00:00');
         $second = $this->published($organization->id(), '2026-12-02T20:00:00+00:00');
-        $first = $this->published($organization->id(), '2025-01-01T20:00:00+00:00');
+        $first = $this->published($organization->id(), '2026-10-24T12:00:01+00:00');
+        $this->published($organization->id(), '2026-10-24T12:00:00+00:00');
+        $this->published($organization->id(), '2025-01-01T20:00:00+00:00');
         $this->published($other->id(), '2026-12-01T20:00:00+00:00');
         $this->events->save($this->event($organization->id(), new \DateTimeImmutable('2026-12-01T20:00:00+00:00'), []));
 
-        $ids = array_map(static fn(Event $event): string => $event->id()->toString(), $this->events->listPublishedByOrganization($organization->id()));
+        $ids = array_map(static fn(Event $event): string => $event->id()->toString(), $this->events->listPublishedByOrganization($organization->id(), $now));
 
         self::assertSame([$first->toString(), $second->toString()], $ids);
     }
 
     public function testListsAreEmptyWithoutMatches(): void
     {
-        self::assertSame([], $this->events->listPublishedByOrganization(OrganizationId::generate()));
+        self::assertSame([], $this->events->listPublishedByOrganization(OrganizationId::generate(), new \DateTimeImmutable('2026-10-24T12:00:00+00:00')));
     }
 
     public function testOrganizationRoundTrip(): void

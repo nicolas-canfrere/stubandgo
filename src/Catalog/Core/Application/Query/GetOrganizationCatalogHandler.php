@@ -8,12 +8,14 @@ use App\Catalog\Core\Domain\Event;
 use App\Catalog\Core\Domain\EventRepositoryInterface;
 use App\Catalog\Core\Domain\OrganizationRepositoryInterface;
 use App\Catalog\Core\Domain\ValueObject\Slug;
+use Psr\Clock\ClockInterface;
 
 final readonly class GetOrganizationCatalogHandler
 {
     public function __construct(
         private OrganizationRepositoryInterface $organizations,
         private EventRepositoryInterface $events,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -28,7 +30,7 @@ final readonly class GetOrganizationCatalogHandler
             $slug,
             array_map(
                 static fn(Event $event): EventSummaryView => EventSummaryView::fromEvent($event, $slug),
-                $this->events->listPublishedByOrganization($organization->id()),
+                $this->events->listPublishedByOrganization($organization->id(), $this->clock->now()),
             ),
         );
     }

@@ -76,6 +76,7 @@ final class CatalogUseCasesTest extends AbstractCatalogTestCase
         $future = $this->createEvent($organization['id'], '2026-10-24T12:00:01+00:00', publish: true);
 
         self::assertSame([$future], $this->idsOf($this->listUpcoming(), [$past, $now, $future]));
+        self::assertSame([$future], array_map(static fn(EventSummaryView $view): string => $view->eventId, $this->catalogOf($organization['slug'])->events));
     }
 
     public function testPublishEmitsEventPublished(): void
@@ -112,12 +113,12 @@ final class CatalogUseCasesTest extends AbstractCatalogTestCase
         $this->command(new PublishEvent(EventId::generate()->toString()));
     }
 
-    public function testOrganizationCatalogListsOnlyItsPublishedEvents(): void
+    public function testOrganizationCatalogListsOnlyItsUpcomingPublishedEvents(): void
     {
         $organization = $this->createOrganization();
         $other = $this->createOrganization();
         $published = $this->createEvent($organization['id'], '2026-12-01T20:00:00+00:00', publish: true);
-        $past = $this->createEvent($organization['id'], '2026-01-01T20:00:00+00:00', publish: true);
+        $this->createEvent($organization['id'], '2026-01-01T20:00:00+00:00', publish: true);
         $this->createEvent($organization['id'], '2026-12-02T20:00:00+00:00');
         $this->createEvent($other['id'], '2026-12-03T20:00:00+00:00', publish: true);
 
@@ -126,8 +127,8 @@ final class CatalogUseCasesTest extends AbstractCatalogTestCase
         self::assertSame($organization['id'], $catalog->organizationId);
         self::assertSame('Rock Asso', $catalog->name);
         self::assertSame($organization['slug'], $catalog->slug);
-        self::assertSame([$past, $published], array_map(static fn(EventSummaryView $view): string => $view->eventId, $catalog->events));
-        self::assertSame([$organization['slug'], $organization['slug']], array_map(static fn(EventSummaryView $view): string => $view->organizationSlug, $catalog->events));
+        self::assertSame([$published], array_map(static fn(EventSummaryView $view): string => $view->eventId, $catalog->events));
+        self::assertSame([$organization['slug']], array_map(static fn(EventSummaryView $view): string => $view->organizationSlug, $catalog->events));
     }
 
     public function testUnknownSlugThrowsOrganizationNotFound(): void
