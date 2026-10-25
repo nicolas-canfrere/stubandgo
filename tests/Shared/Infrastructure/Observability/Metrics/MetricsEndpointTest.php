@@ -1,0 +1,45 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Tests\Shared\Infrastructure\Observability\Metrics;
+
+use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+
+final class MetricsEndpointTest extends WebTestCase
+{
+    public function testMetricsEndpointContentType(): void
+    {
+        $client = self::createClient();
+
+        $client->request('GET', '/metrics');
+
+        self::assertResponseStatusCodeSame(200);
+        self::assertResponseHeaderSame('Content-Type', 'text/plain; version=0.0.4');
+    }
+
+    public function testHeadRequestGetsTheHeadersWithoutBody(): void
+    {
+        $client = self::createClient();
+
+        $client->request('HEAD', '/metrics');
+
+        self::assertResponseStatusCodeSame(200);
+        self::assertResponseHeaderSame('Content-Type', 'text/plain; version=0.0.4');
+        self::assertSame('', $client->getResponse()->getContent());
+    }
+
+    public function testMetricsEndpointExposesEveryProvider(): void
+    {
+        $client = self::createClient();
+
+        $client->request('GET', '/metrics');
+
+        $body = (string) $client->getResponse()->getContent();
+        foreach (['stubandgo_orders', 'stubandgo_outbox_pending_messages', 'stubandgo_outbox_oldest_pending_age_seconds', 'stubandgo_outbox_quarantined_messages', 'stubandgo_scans'] as $name) {
+            self::assertStringContainsString("# TYPE $name gauge\n", $body);
+        }
+        self::assertStringContainsString('stubandgo_orders{status="paid"} ', $body);
+        self::assertStringContainsString('stubandgo_scans{outcome="already_used"} ', $body);
+    }
+}

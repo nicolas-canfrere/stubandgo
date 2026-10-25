@@ -126,3 +126,5 @@ when@test:
             exclude: '../tests/Shared/Infrastructure/Fixtures/*Exception.php'
         App\Tests\Shared\Infrastructure\Outbox\Fixtures\:
             resource: '../tests/Shared/Infrastructure/Outbox/Fixtures/'
+        App\Tests\Shared\Infrastructure\Observability\Health\Fixtures\HealthyRabbitMqCheck:
+            decorates: App\Shared\Infrastructure\Observability\Health\RabbitMqHealthCheck
