@@ -31,7 +31,7 @@ final readonly class CreateEventController
     #[OA\Post(
         summary: 'Create a draft event in the organization of the caller.',
         description: 'Requires the Keycloak access token of an administrator of an organization (realm role organization-admin). The organization is the one of the token, never taken from the request. The event starts as a draft, invisible to the public catalog.',
-        requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(ref: '#/components/schemas/EventRequest')),
+        requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(ref: '#/components/schemas/CreateEventRequest')),
         security: [['bearerAuth' => []]],
         tags: ['Backoffice'],
         responses: [
@@ -41,7 +41,7 @@ final readonly class CreateEventController
             new OA\Response(response: 422, description: 'Malformed payload (/problems/validation_failed) or a value that breaks a rule: /problems/invalid_value, or /problems/event_start_in_past when the start is not in the future.', content: new OA\JsonContent(ref: '#/components/schemas/Problem')),
         ],
     )]
-    public function __invoke(MemberOrganizationView $organization, #[MapRequestPayload] EventRequest $request): JsonResponse
+    public function __invoke(MemberOrganizationView $organization, #[MapRequestPayload] CreateEventRequest $request): JsonResponse
     {
         $eventId = EventId::generate()->toString();
         $this->commandBus->dispatch(new CreateEvent(

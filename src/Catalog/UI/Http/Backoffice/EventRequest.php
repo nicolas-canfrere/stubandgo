@@ -8,7 +8,7 @@ use App\Shared\Identity\PriceTierId;
 use OpenApi\Attributes as OA;
 
 /**
- * Structure of the event body of the creation and the revision: the format of every field is checked by the domain.
+ * Structure of the event body of the revision: the format of every field is checked by the domain.
  */
 final readonly class EventRequest
 {

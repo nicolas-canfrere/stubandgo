@@ -107,7 +107,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EventRequest'
+              $ref: '#/components/schemas/CreateEventRequest'
       responses:
         '201':
           description: 'The draft event was created; its URL is in the Location header.'
@@ -1207,6 +1207,69 @@ components:
           type: string
           example: gKLhZN-ot9fBxtYtPWJNQkFE2j03nIhf5Rfh3Q52pww
       type: object
+    NewPriceTierRequest:
+      required:
+        - label
+        - priceCents
+      properties:
+        label:
+          description: 'Label of the price tier.'
+          type: string
+          example: 'Plein tarif'
+        priceCents:
+          description: 'Price in euro cents.'
+          type: integer
+          example: 2500
+      type: object
+    CreateEventRequest:
+      required:
+        - title
+        - description
+        - venue
+        - startsAt
+        - capacity
+        - priceTiers
+      properties:
+        title:
+          type: string
+          example: 'Soirée Rock'
+        description:
+          type: string
+          example: 'Trois groupes sur scène.'
+        venue:
+          type: string
+          example: 'La Cigale'
+        startsAt:
+          description: 'Start as an ISO 8601 date-time with a UTC offset; it must be in the future.'
+          type: string
+          example: '2026-11-20T20:00:00+01:00'
+        capacity:
+          description: 'Number of seats.'
+          type: integer
+          example: 200
+        priceTiers:
+          description: 'The price tiers of the event; each one gets a new identifier.'
+          type: array
+          items:
+            $ref: '#/components/schemas/NewPriceTierRequest'
+      type: object
+    InviteMemberRequest:
+      required:
+        - email
+        - role
+      properties:
+        email:
+          description: 'Email address of the invited member; it must not belong to a Keycloak user yet.'
+          type: string
+          example: nouveau@rock-asso.test
+        role:
+          description: 'Role of the invited member in the organization.'
+          type: string
+          example: controller
+          enum:
+            - admin
+            - controller
+      type: object
     PriceTierRequest:
       required:
         - label
@@ -1257,23 +1320,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PriceTierRequest'
-      type: object
-    InviteMemberRequest:
-      required:
-        - email
-        - role
-      properties:
-        email:
-          description: 'Email address of the invited member; it must not belong to a Keycloak user yet.'
-          type: string
-          example: nouveau@rock-asso.test
-        role:
-          description: 'Role of the invited member in the organization.'
-          type: string
-          example: controller
-          enum:
-            - admin
-            - controller
       type: object
     ChangeCommissionRateRequest:
       required:

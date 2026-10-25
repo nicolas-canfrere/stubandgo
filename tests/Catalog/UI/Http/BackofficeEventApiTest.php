@@ -318,42 +318,60 @@ final class BackofficeEventApiTest extends WebTestCase
         self::assertSame('/problems/event_not_published', $problem['type'] ?? null);
     }
 
-    public function testAPendingOrderLocksTheEventAgainstRevisionAndUnpublication(): void
+    public function testAPendingOrderLocksAPublishedEventAgainstUnpublication(): void
     {
-        $eventId = $this->createEvent($this->organization['id'], self::FUTURE, publish: true);
-        $tier = $this->detailOf($eventId)['priceTiers'];
-        self::assertIsArray($tier);
-        self::assertIsArray($tier[0]);
-        $this->client->request('POST', '/api/orders', server: ['CONTENT_TYPE' => 'application/json'], content: json_encode([
-            'eventId' => $eventId,
-            'buyerEmail' => 'acheteur@example.test',
-            'lines' => [['priceTierId' => $tier[0]['id'], 'quantity' => 1]],
-        ], \JSON_THROW_ON_ERROR));
-        self::assertResponseStatusCodeSame(201);
+        $eventId = $this->publishedEventWithPendingOrder();
 
         self::assertTrue($this->detailOf($eventId)['locked']);
-        $unpublish = $this->call('DELETE', self::EVENTS . '/' . $eventId . '/publication', $this->adminToken());
+        $problem = $this->call('DELETE', self::EVENTS . '/' . $eventId . '/publication', $this->adminToken());
+
         self::assertResponseStatusCodeSame(409);
-        self::assertSame('/problems/event_locked', $unpublish['type'] ?? null);
+        self::assertSame('/problems/event_locked', $problem['type'] ?? null);
         self::assertSame('published', $this->detailOf($eventId)['status']);
     }
 
-    public function testALockedDraftCannotBeRevised(): void
+    public function testAPendingOrderLocksAPublishedEventAgainstRevision(): void
     {
-        $eventId = $this->createEvent($this->organization['id'], self::FUTURE, publish: true);
-        $tier = $this->detailOf($eventId)['priceTiers'];
-        self::assertIsArray($tier);
-        self::assertIsArray($tier[0]);
-        $this->client->request('POST', '/api/orders', server: ['CONTENT_TYPE' => 'application/json'], content: json_encode([
-            'eventId' => $eventId,
-            'buyerEmail' => 'acheteur@example.test',
-            'lines' => [['priceTierId' => $tier[0]['id'], 'quantity' => 1]],
-        ], \JSON_THROW_ON_ERROR));
+        $eventId = $this->publishedEventWithPendingOrder();
 
         $problem = $this->call('PUT', self::EVENTS . '/' . $eventId, $this->adminToken(), $this->payload());
 
         self::assertResponseStatusCodeSame(409);
         self::assertSame('/problems/event_locked', $problem['type'] ?? null);
+    }
+
+    public function testPublishingAnEventWhoseStartHasPassedIsUnprocessable(): void
+    {
+        $eventId = $this->createEvent($this->organization['id'], self::FUTURE);
+        self::mockTime(new \DateTimeImmutable('2027-01-01T00:00:00+00:00'));
+
+        $problem = $this->call('POST', self::EVENTS . '/' . $eventId . '/publication', $this->adminToken());
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame('/problems/event_start_in_past', $problem['type'] ?? null);
+        self::assertSame('draft', $this->detailOf($eventId)['status']);
+    }
+
+    public function testCreationNeverUsesTheTierIdentifiersOfTheClient(): void
+    {
+        $other = $this->createOrganization(keycloakOrganizationId: self::OTHER_KEYCLOAK_ID);
+        $foreignTier = PriceTierId::generate()->toString();
+        $foreignEvent = $this->createEvent($other['id'], self::FUTURE, priceTiers: [['id' => $foreignTier, 'label' => 'Plein', 'priceCents' => 2500]]);
+
+        $body = $this->call('POST', self::EVENTS, $this->adminToken(), [...$this->payload(), 'priceTiers' => [['id' => $foreignTier, 'label' => 'Volé', 'priceCents' => 1]]]);
+
+        self::assertResponseStatusCodeSame(201);
+        $tiers = $body['priceTiers'] ?? null;
+        self::assertIsArray($tiers);
+        self::assertCount(1, $tiers);
+        self::assertIsArray($tiers[0]);
+        self::assertNotSame($foreignTier, $tiers[0]['id'] ?? null);
+        self::assertSame('Volé', $tiers[0]['label'] ?? null);
+        $foreign = $this->ask(new GetBackofficeEvent($foreignEvent));
+        self::assertCount(1, $foreign->priceTiers);
+        self::assertSame($foreignTier, $foreign->priceTiers[0]->priceTierId);
+        self::assertSame('Plein', $foreign->priceTiers[0]->label);
+        self::assertSame(2500, $foreign->priceTiers[0]->priceCents);
     }
 
     public function testAStartInThePastIsUnprocessableOnCreationAndRevision(): void
@@ -389,8 +407,6 @@ final class BackofficeEventApiTest extends WebTestCase
         yield 'start that is not a date' => [['startsAt' => 'demain'], '/problems/invalid_value'];
         yield 'negative price' => [['priceTiers' => [['label' => 'Plein', 'priceCents' => -1]]], '/problems/invalid_value'];
         yield 'empty tier label' => [['priceTiers' => [['label' => '', 'priceCents' => 100]]], '/problems/invalid_value'];
-        yield 'malformed tier identifier' => [['priceTiers' => [['id' => 'abc', 'label' => 'Plein', 'priceCents' => 100]]], '/problems/invalid_value'];
-        yield 'twice the same tier' => [['priceTiers' => [['id' => '01JAE5Z8Q3M4N6P7R8S9T0V1W2', 'label' => 'A', 'priceCents' => 1], ['id' => '01JAE5Z8Q3M4N6P7R8S9T0V1W2', 'label' => 'B', 'priceCents' => 2]]], '/problems/invalid_value'];
         yield 'title that is not a string' => [['title' => 42], '/problems/validation_failed'];
         yield 'capacity that is not an integer' => [['capacity' => 'cent'], '/problems/validation_failed'];
         yield 'tiers that are not a list' => [['priceTiers' => 'gratuit'], '/problems/validation_failed'];
@@ -414,6 +430,30 @@ final class BackofficeEventApiTest extends WebTestCase
         $listed = $this->call('GET', self::EVENTS, $this->adminToken());
         self::assertIsArray($listed['events'] ?? null);
         self::assertCount(1, $listed['events']);
+        self::assertSame('Concert', $this->detailOf($eventId)['title']);
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>}>
+     */
+    public static function invalidTierIdentifiers(): iterable
+    {
+        yield 'malformed tier identifier' => [['priceTiers' => [['id' => 'abc', 'label' => 'Plein', 'priceCents' => 100]]]];
+        yield 'twice the same tier' => [['priceTiers' => [['id' => '01JAE5Z8Q3M4N6P7R8S9T0V1W2', 'label' => 'A', 'priceCents' => 1], ['id' => '01JAE5Z8Q3M4N6P7R8S9T0V1W2', 'label' => 'B', 'priceCents' => 2]]]];
+    }
+
+    /**
+     * @param array<string, mixed> $override
+     */
+    #[DataProvider('invalidTierIdentifiers')]
+    public function testInvalidTierIdentifiersAreUnprocessableOnRevision(array $override): void
+    {
+        $eventId = $this->createEvent($this->organization['id'], self::FUTURE);
+
+        $problem = $this->call('PUT', self::EVENTS . '/' . $eventId, $this->adminToken(), [...$this->payload(), ...$override]);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame('/problems/invalid_value', $problem['type'] ?? null);
         self::assertSame('Concert', $this->detailOf($eventId)['title']);
     }
 
@@ -444,6 +484,22 @@ final class BackofficeEventApiTest extends WebTestCase
                 self::assertArrayHasKey($status, $operation['responses'], $path . ' ' . $verb);
             }
         }
+    }
+
+    private function publishedEventWithPendingOrder(): string
+    {
+        $eventId = $this->createEvent($this->organization['id'], self::FUTURE, publish: true);
+        $tiers = $this->detailOf($eventId)['priceTiers'];
+        self::assertIsArray($tiers);
+        self::assertIsArray($tiers[0]);
+        $this->client->request('POST', '/api/orders', server: ['CONTENT_TYPE' => 'application/json'], content: json_encode([
+            'eventId' => $eventId,
+            'buyerEmail' => 'acheteur@example.test',
+            'lines' => [['priceTierId' => $tiers[0]['id'], 'quantity' => 1]],
+        ], \JSON_THROW_ON_ERROR));
+        self::assertResponseStatusCodeSame(201);
+
+        return $eventId;
     }
 
     /**
