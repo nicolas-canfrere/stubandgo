@@ -63,6 +63,175 @@ paths:
       security:
         -
           bearerAuth: []
+  /api/backoffice/events:
+    get:
+      tags:
+        - Backoffice
+      summary: 'List every event of the organization of the caller, drafts included.'
+      description: 'Requires the Keycloak access token of an administrator of an organization (realm role organization-admin). The events are those of the organization of the token, by start date.'
+      operationId: get_catalog_backoffice_list_events
+      responses:
+        '200':
+          description: 'The events of the organization, by start date.'
+          content:
+            application/json:
+              schema:
+                required:
+                  - events
+                properties:
+                  events: { type: array, items: { $ref: '#/components/schemas/BackofficeEventSummary' } }
+                type: object
+        '401':
+          description: 'Access token missing or invalid (/problems/unauthorized, with a WWW-Authenticate: Bearer challenge).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: 'The member is not an administrator of an organization known to the platform (/problems/forbidden).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+        -
+          bearerAuth: []
+    post:
+      tags:
+        - Backoffice
+      summary: 'Create a draft event in the organization of the caller.'
+      description: 'Requires the Keycloak access token of an administrator of an organization (realm role organization-admin). The organization is the one of the token, never taken from the request. The event starts as a draft, invisible to the public catalog.'
+      operationId: post_catalog_backoffice_create_event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventRequest'
+      responses:
+        '201':
+          description: 'The draft event was created; its URL is in the Location header.'
+          headers:
+            Location:
+              description: 'URL of the event.'
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackofficeEvent'
+        '401':
+          description: 'Access token missing or invalid (/problems/unauthorized, with a WWW-Authenticate: Bearer challenge).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: 'The member is not an administrator of an organization known to the platform (/problems/forbidden).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: 'Malformed payload (/problems/validation_failed) or a value that breaks a rule: /problems/invalid_value, or /problems/event_start_in_past when the start is not in the future.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+        -
+          bearerAuth: []
+  '/api/backoffice/events/{eventId}':
+    get:
+      tags:
+        - Backoffice
+      summary: 'Show an event of the organization of the caller, whatever its status.'
+      description: 'Requires the Keycloak access token of an administrator of an organization (realm role organization-admin).'
+      operationId: get_catalog_backoffice_get_event
+      parameters:
+        -
+          name: eventId
+          in: path
+          description: 'ULID of the event.'
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 'The event.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackofficeEvent'
+        '401':
+          description: 'Access token missing or invalid (/problems/unauthorized, with a WWW-Authenticate: Bearer challenge).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: 'The member is not an administrator of the organization that owns the event, or the event does not exist (/problems/forbidden).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+        -
+          bearerAuth: []
+    put:
+      tags:
+        - Backoffice
+      summary: 'Replace every field of a draft event, its price tiers included.'
+      description: 'Requires the Keycloak access token of an administrator of an organization (realm role organization-admin). Only an unlocked draft can be revised. A tier with the identifier of a tier of the event is kept, one without identifier is created, one missing from the list is deleted.'
+      operationId: put_catalog_backoffice_revise_event
+      parameters:
+        -
+          name: eventId
+          in: path
+          description: 'ULID of the event.'
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventRequest'
+      responses:
+        '200':
+          description: 'The revised event.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackofficeEvent'
+        '401':
+          description: 'Access token missing or invalid (/problems/unauthorized, with a WWW-Authenticate: Bearer challenge).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: 'The member is not an administrator of the organization that owns the event, or the event does not exist (/problems/forbidden).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: 'The event is published (/problems/event_not_draft) or locked because seats were taken (/problems/event_locked).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: 'Malformed payload (/problems/validation_failed) or a value that breaks a rule: /problems/invalid_value (including a tier of another event), or /problems/event_start_in_past.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+        -
+          bearerAuth: []
   /api/backoffice/invitations:
     post:
       tags:
@@ -105,6 +274,97 @@ paths:
                 $ref: '#/components/schemas/Problem'
         '502':
           description: 'Keycloak is unreachable or refused the request (/problems/identity_provider_unavailable).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+        -
+          bearerAuth: []
+  '/api/backoffice/events/{eventId}/publication':
+    post:
+      tags:
+        - Backoffice
+      summary: 'Publish an event so that it appears in the public catalog and opens for sale.'
+      description: 'Requires the Keycloak access token of an administrator of an organization (realm role organization-admin).'
+      operationId: post_catalog_backoffice_publish_event
+      parameters:
+        -
+          name: eventId
+          in: path
+          description: 'ULID of the event.'
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 'The published event.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackofficeEvent'
+        '401':
+          description: 'Access token missing or invalid (/problems/unauthorized, with a WWW-Authenticate: Bearer challenge).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: 'The member is not an administrator of the organization that owns the event, or the event does not exist (/problems/forbidden).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: 'The event is already published (/problems/event_already_published).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: 'The event has no price tier (/problems/event_without_price_tier) or starts in the past (/problems/event_start_in_past).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+        -
+          bearerAuth: []
+    delete:
+      tags:
+        - Backoffice
+      summary: 'Take an event off sale: it goes back to draft.'
+      description: 'Requires the Keycloak access token of an administrator of an organization (realm role organization-admin). Refused once seats have been taken.'
+      operationId: delete_catalog_backoffice_unpublish_event
+      parameters:
+        -
+          name: eventId
+          in: path
+          description: 'ULID of the event.'
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 'The event, back to draft.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackofficeEvent'
+        '401':
+          description: 'Access token missing or invalid (/problems/unauthorized, with a WWW-Authenticate: Bearer challenge).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: 'The member is not an administrator of the organization that owns the event, or the event does not exist (/problems/forbidden).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: 'The event is not published (/problems/event_not_published) or is locked because seats were taken (/problems/event_locked).'
           content:
             application/json:
               schema:
@@ -820,6 +1080,79 @@ components:
           items:
             $ref: '#/components/schemas/PriceTier'
       type: object
+    BackofficeEventSummary:
+      description: 'An event of an organization as its administrators list it.'
+      required:
+        - id
+        - title
+        - startsAt
+        - status
+        - locked
+      properties:
+        id:
+          description: 'ULID of the event'
+          type: string
+        title:
+          type: string
+          example: 'Soirée Rock'
+        startsAt:
+          description: 'Start in UTC (RFC 3339, Z suffix); the front converts it for display'
+          type: string
+          format: date-time
+          example: '2026-11-20T19:00:00Z'
+        status:
+          description: 'draft: invisible to the public catalog and closed for sale.'
+          type: string
+          enum:
+            - draft
+            - published
+        locked:
+          description: 'True once seats have been taken: the event can then be neither revised nor unpublished.'
+          type: boolean
+      type: object
+    BackofficeEvent:
+      description: 'An event of an organization with everything its administrators can edit.'
+      required:
+        - id
+        - title
+        - startsAt
+        - status
+        - locked
+        - description
+        - venue
+        - capacity
+        - priceTiers
+      properties:
+        id:
+          description: 'ULID of the event'
+          type: string
+        title:
+          type: string
+          example: 'Soirée Rock'
+        startsAt:
+          description: 'Start in UTC (RFC 3339, Z suffix); the front converts it for display'
+          type: string
+          format: date-time
+          example: '2026-11-20T19:00:00Z'
+        status:
+          type: string
+          enum:
+            - draft
+            - published
+        locked:
+          type: boolean
+        description:
+          type: string
+        venue:
+          type: string
+        capacity:
+          type: integer
+          example: 200
+        priceTiers:
+          type: array
+          items:
+            $ref: '#/components/schemas/PriceTier'
+      type: object
     HealthCheck:
       required:
         - healthy
@@ -873,6 +1206,57 @@ components:
           description: 'Token read from the QR code of the ticket (43 base64url characters for a real ticket).'
           type: string
           example: gKLhZN-ot9fBxtYtPWJNQkFE2j03nIhf5Rfh3Q52pww
+      type: object
+    PriceTierRequest:
+      required:
+        - label
+        - priceCents
+      properties:
+        label:
+          description: 'Label of the price tier.'
+          type: string
+          example: 'Plein tarif'
+        priceCents:
+          description: 'Price in euro cents.'
+          type: integer
+          example: 2500
+        id:
+          description: 'ULID of an existing tier of the event, to keep it; omitted, a new tier is created.'
+          type: string
+          nullable: true
+          default: null
+      type: object
+    EventRequest:
+      required:
+        - title
+        - description
+        - venue
+        - startsAt
+        - capacity
+        - priceTiers
+      properties:
+        title:
+          type: string
+          example: 'Soirée Rock'
+        description:
+          type: string
+          example: 'Trois groupes sur scène.'
+        venue:
+          type: string
+          example: 'La Cigale'
+        startsAt:
+          description: 'Start as an ISO 8601 date-time with a UTC offset; it must be in the future.'
+          type: string
+          example: '2026-11-20T20:00:00+01:00'
+        capacity:
+          description: 'Number of seats.'
+          type: integer
+          example: 200
+        priceTiers:
+          description: 'The complete list of price tiers: a tier missing from it is deleted on revision.'
+          type: array
+          items:
+            $ref: '#/components/schemas/PriceTierRequest'
       type: object
     InviteMemberRequest:
       required:

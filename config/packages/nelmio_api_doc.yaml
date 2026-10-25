@@ -80,6 +80,32 @@ nelmio_api_doc:
                         priceTiers:
                             type: array
                             items: { $ref: '#/components/schemas/PriceTier' }
+                BackofficeEventSummary:
+                    description: An event of an organization as its administrators list it.
+                    type: object
+                    required: [id, title, startsAt, status, locked]
+                    properties:
+                        id: { type: string, description: ULID of the event }
+                        title: { type: string, example: Soirée Rock }
+                        startsAt: { type: string, format: date-time, description: 'Start in UTC (RFC 3339, Z suffix); the front converts it for display', example: '2026-11-20T19:00:00Z' }
+                        status: { type: string, enum: [draft, published], description: 'draft: invisible to the public catalog and closed for sale.' }
+                        locked: { type: boolean, description: 'True once seats have been taken: the event can then be neither revised nor unpublished.' }
+                BackofficeEvent:
+                    description: An event of an organization with everything its administrators can edit.
+                    type: object
+                    required: [id, title, startsAt, status, locked, description, venue, capacity, priceTiers]
+                    properties:
+                        id: { type: string, description: ULID of the event }
+                        title: { type: string, example: Soirée Rock }
+                        startsAt: { type: string, format: date-time, description: 'Start in UTC (RFC 3339, Z suffix); the front converts it for display', example: '2026-11-20T19:00:00Z' }
+                        status: { type: string, enum: [draft, published] }
+                        locked: { type: boolean }
+                        description: { type: string }
+                        venue: { type: string }
+                        capacity: { type: integer, example: 200 }
+                        priceTiers:
+                            type: array
+                            items: { $ref: '#/components/schemas/PriceTier' }
                 HealthCheck:
                     type: object
                     required: [healthy, detail]

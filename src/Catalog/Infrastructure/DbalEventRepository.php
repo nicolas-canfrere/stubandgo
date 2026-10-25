@@ -123,6 +123,17 @@ final readonly class DbalEventRepository implements EventRepositoryInterface
         return $this->hydrate($rows);
     }
 
+    public function listByOrganization(OrganizationId $organizationId): array
+    {
+        /** @var list<EventRow> $rows */
+        $rows = $this->connection->fetchAllAssociative(
+            'SELECT ' . self::EVENT_COLUMNS . ' FROM event WHERE organization_id = :organization_id ORDER BY starts_at, id',
+            ['organization_id' => $organizationId->toString()],
+        );
+
+        return $this->hydrate($rows);
+    }
+
     private function load(EventId $id, string $lock): ?Event
     {
         /** @var EventRow|false $row */

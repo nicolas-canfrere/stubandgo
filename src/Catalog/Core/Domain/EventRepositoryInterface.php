@@ -52,4 +52,11 @@ interface EventRepositoryInterface
      * @return list<Event>
      */
     public function listPublishedByOrganization(OrganizationId $organizationId, \DateTimeImmutable $now): array;
+
+    /**
+     * Every event of an organization, whatever its status, by start date then identifier.
+     *
+     * @return list<Event>
+     */
+    public function listByOrganization(OrganizationId $organizationId): array;
 }
