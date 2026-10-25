@@ -16,8 +16,8 @@ final class ParallelRunner
     private const float TIMEOUT_SECONDS = 120.0;
 
     /**
-     * @param list<list<string>>    $commands      console arguments of each process (command name first)
-     * @param (callable(): void)|null $beforeRelease called once every process is ready, right before the barrier opens
+     * @param list<non-empty-list<string>> $commands      console arguments of each process (command name first)
+     * @param (callable(): void)|null      $beforeRelease called once every process is ready, right before the barrier opens
      *
      * @return list<string> what each process printed after "ready", trimmed, in the order of $commands
      */
@@ -50,12 +50,15 @@ final class ParallelRunner
     }
 
     /**
-     * @param list<string> $arguments
+     * The arguments follow "--", so a value starting with a dash (a base64url token can) is never read as an option.
+     *
+     * @param non-empty-list<string> $arguments
      */
     private static function start(array $arguments, string $barrier): Process
     {
+        $name = array_shift($arguments);
         $process = new Process(
-            ['php', 'bin/console', ...$arguments, '--barrier=' . $barrier],
+            ['php', 'bin/console', $name, '--barrier=' . $barrier, '--', ...$arguments],
             \dirname(__DIR__, 2),
             ['APP_ENV' => 'test', 'XDEBUG_MODE' => 'off', 'SHELL_VERBOSITY' => '0'],
             null,

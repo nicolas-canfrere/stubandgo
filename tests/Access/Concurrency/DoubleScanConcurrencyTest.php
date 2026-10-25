@@ -60,6 +60,14 @@ final class DoubleScanConcurrencyTest extends KernelTestCase
         self::assertNotNull($this->connection()->fetchOne('SELECT used_at FROM admission_right WHERE token = ?', [$this->right['token']]));
     }
 
+    public function testATokenStartingWithADashReachesTheScanAsAnArgument(): void
+    {
+        $this->right = $this->issueAdmissionRight();
+        $token = '-' . substr($this->unknownToken(), 1);
+
+        self::assertSame(['unknown'], ParallelRunner::run([['test:access:scan', $this->right['eventId'], $token]]));
+    }
+
     private function connection(): Connection
     {
         return self::getContainer()->get(Connection::class);
